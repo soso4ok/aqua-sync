@@ -1,0 +1,6 @@
+{
+  "name": "AquaSync",
+  "description": "Fusion of Copernicus satellite imagery and Galileo-verified citizen ground-truth reports for high-precision water quality monitoring.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["Satellite Imagery Integration", "Geospatial Data Visualization", "Citizen Science Reporting"]
+}
