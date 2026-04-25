@@ -138,6 +138,11 @@ async def submit_report(
 
     # --- Gemini AI верифікація фото ---
     ai_verdict: str = f"GNSS: {accuracy_result.reason}"
+    if photo_bytes and not _verifier:
+        raise HTTPException(
+            status_code=503,
+            detail="Photo verification service is unavailable. Submit without a photo or try again later.",
+        )
     if photo_bytes and _verifier:
         try:
             gemini_result = await _verifier.verify(photo_bytes, photo_mime)
