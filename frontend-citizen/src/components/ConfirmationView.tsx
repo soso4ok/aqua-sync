@@ -67,11 +67,14 @@ export default function ConfirmationView() {
 
     try {
       // 1. Get Presigned URL
-      const storageRes = await fetch(getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg'));
+      const storageUrl = getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg');
+      console.log('📡 Fetching presigned URL from:', storageUrl);
+      const storageRes = await fetch(storageUrl);
       if (!storageRes.ok) throw new Error('Failed to get upload URL');
       const { upload_url, key } = await storageRes.json();
 
-      // 2. Upload Image to R2
+      // 2. Upload Image to Choice
+      console.log('☁️ Uploading blob to R2 via presigned URL...');
       const blob = await (await fetch(imgSrc)).blob();
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
@@ -90,7 +93,9 @@ export default function ConfirmationView() {
       formData.append('captured_at', currentTime);
       formData.append('photo_key', key);
 
-      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
+      const reportUrl = getApiUrl('/api/v1/reports/');
+      console.log('🚀 Submitting final report to:', reportUrl);
+      const reportRes = await fetch(reportUrl, {
         method: 'POST',
         body: formData,
       });
