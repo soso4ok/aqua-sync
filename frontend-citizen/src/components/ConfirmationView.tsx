@@ -97,6 +97,13 @@ export default function ConfirmationView() {
       });
 
       if (!reportRes.ok) throw new Error('Failed to create report');
+      
+      const newReport = await reportRes.json();
+      
+      // Save ID to local storage for "My History" tracking without auth
+      const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
+      myReports.push(newReport.id);
+      localStorage.setItem('my_reports', JSON.stringify(myReports));
 
       console.log('Report created successfully');
       navigate('/profile'); // Redirect to profile to see history

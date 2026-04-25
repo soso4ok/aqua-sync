@@ -48,6 +48,16 @@ export default function CameraView() {
            <span className="text-white text-[10px] uppercase font-mono tracking-widest opacity-60">Capture Mode</span>
         </div>
       </div>
+
+      {/* Manual Take Photo Button (Above Navbar) */}
+      <div className="absolute bottom-32 left-0 right-0 flex justify-center pointer-events-none">
+        <button 
+          onClick={capture}
+          className="pointer-events-auto bg-white text-[#172846] font-chakra font-bold text-[12px] tracking-[0.2em] uppercase px-10 py-4 rounded-full shadow-[0_15px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-transform"
+        >
+          Take Photo
+        </button>
+      </div>
     </div>
   );
 }
