@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Camera, Droplets, ChevronRight, Globe, Github } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -30,6 +31,7 @@ const slides = [
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showAuth, setShowAuth] = useState(false);
+  const navigate = useNavigate();
 
   const nextSlide = () => {
     if (currentSlide < slides.length - 1) {
@@ -43,6 +45,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     localStorage.setItem('onboarding_complete', 'true');
     localStorage.setItem('auth_token', 'mock_token');
     onComplete();
+    navigate('/home');
   };
 
   return (
