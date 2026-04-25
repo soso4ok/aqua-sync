@@ -5,16 +5,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user_optional
+from app.core.config import settings
 from app.models.anomaly import AnomalyPolygon
 from app.models.report import CitizenReport, PollutionType, TrustLevel
 from app.models.user import User
 from app.schemas.report import ReportCreate, ReportRead
+from app.services.ai_verify.gemini import GeminiPhotoVerifier, VerificationStatus
 from app.services.anti_fraud.gnss import GNSSValidator
 from app.services.gis.fusion import SpatialFusionService
 from app.services.storage.r2 import upload_report_photo
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 _gnss = GNSSValidator()
+_verifier: GeminiPhotoVerifier | None = (
+    GeminiPhotoVerifier(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
+)
 
 # Maps PWA tag ids to PollutionType enum
 _TAG_TO_TYPE: dict[str, PollutionType] = {
@@ -80,13 +85,53 @@ async def submit_report(
     trust_level = _penalty_to_trust(penalty)
     is_high_accuracy = gnss_accuracy_m < 5.0
 
-    photo_key: str | None = None
+    # --- Читаємо фото (якщо є) ---
+    photo_bytes: bytes | None = None
+    photo_mime: str = "image/jpeg"
     if photo:
         try:
             photo_bytes = await photo.read()
-            photo_key = upload_report_photo(photo_bytes, photo.content_type or "image/jpeg")
+            photo_mime = photo.content_type or "image/jpeg"
         except Exception:
-            pass  # R2 not configured or unreachable — proceed without photo
+            pass
+
+    # --- Gemini AI верифікація фото ---
+    ai_verdict: str = f"GNSS: {accuracy_result.reason}"
+    if photo_bytes and _verifier:
+        try:
+            gemini_result = await _verifier.verify(photo_bytes, photo_mime)
+
+            # Fraud → завжди EVIDENCE_VOID незалежно від GNSS
+            if gemini_result.status == VerificationStatus.FRAUD_SUSPECTED:
+                trust_level = TrustLevel.EVIDENCE_VOID
+
+            # Низька впевненість → знижуємо до LOW якщо було HIGH
+            elif gemini_result.status == VerificationStatus.LOW_CONFIDENCE:
+                if trust_level == TrustLevel.HIGH:
+                    trust_level = TrustLevel.LOW
+
+            # Gemini розпізнав тип забруднення → використовуємо замість тегів
+            if gemini_result.pollution_type != PollutionType.UNKNOWN:
+                gemini_pollution_type = gemini_result.pollution_type
+            else:
+                gemini_pollution_type = None
+
+            ai_verdict = (
+                f"GNSS: {accuracy_result.reason} | "
+                f"AI ({gemini_result.confidence:.0%}): {gemini_result.reasoning}"
+            )
+        except Exception:
+            gemini_pollution_type = None  # Gemini недоступний — продовжуємо без нього
+    else:
+        gemini_pollution_type = None
+
+    # --- Завантаження фото в R2 ---
+    photo_key: str | None = None
+    if photo_bytes:
+        try:
+            photo_key = upload_report_photo(photo_bytes, photo_mime)
+        except Exception:
+            pass  # R2 не налаштований — продовжуємо без фото
 
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Point
@@ -98,9 +143,9 @@ async def submit_report(
         gnss_accuracy_m=gnss_accuracy_m,
         description=description,
         photo_url=photo_key,
-        pollution_type=_tags_to_pollution_type(tag_list),
+        pollution_type=gemini_pollution_type or _tags_to_pollution_type(tag_list),
         trust_level=trust_level,
-        ai_verdict=f"GNSS: {accuracy_result.reason}",
+        ai_verdict=ai_verdict,
         captured_at=captured_dt,
     )
     session.add(report)
