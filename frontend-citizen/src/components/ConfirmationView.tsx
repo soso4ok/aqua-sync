@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Clock, Tag, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getApiUrl } from '../apiConfig';
+import NotificationPopup from './NotificationPopup';
 
 export default function ConfirmationView() {
   const navigate = useNavigate();
@@ -14,6 +15,15 @@ export default function ConfirmationView() {
   const [address, setAddress] = useState('Fetching location...');
   const [coords, setCoords] = useState<{ lat: number, lng: number, accuracy: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState<{ message: string, type: 'error' | 'success', isVisible: boolean }>({
+    message: '',
+    type: 'error',
+    isVisible: false
+  });
+
+  const showError = (message: string) => {
+    setNotification({ message, type: 'error', isVisible: true });
+  };
 
   useEffect(() => {
     if (!imgSrc) {
@@ -68,22 +78,23 @@ export default function ConfirmationView() {
     try {
       // 1. Get Presigned URL
       const storageUrl = getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg');
-      console.log('📡 Fetching presigned URL from:', storageUrl);
       const storageRes = await fetch(storageUrl);
-      if (!storageRes.ok) throw new Error('Failed to get upload URL');
+      if (!storageRes.ok) {
+        const msg = await parseError(storageRes);
+        throw new Error(msg);
+      }
       const { upload_url, key } = await storageRes.json();
 
-      // 2. Upload Image to Choice
-      console.log('☁️ Uploading blob to R2 via presigned URL...');
+      // 2. Upload Image
       const blob = await (await fetch(imgSrc)).blob();
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
         body: blob,
         headers: { 'Content-Type': 'image/jpeg' }
       });
-      if (!uploadRes.ok) throw new Error('Failed to upload image');
+      if (!uploadRes.ok) throw new Error('Failed to upload image to storage');
 
-      // 3. Create Report in Backend
+      // 3. Create Report
       const formData = new FormData();
       formData.append('latitude', coords.lat.toString());
       formData.append('longitude', coords.lng.toString());
@@ -94,28 +105,42 @@ export default function ConfirmationView() {
       formData.append('photo_key', key);
 
       const reportUrl = getApiUrl('/api/v1/reports/');
-      console.log('🚀 Submitting final report to:', reportUrl);
       const reportRes = await fetch(reportUrl, {
         method: 'POST',
         body: formData,
       });
 
-      if (!reportRes.ok) throw new Error('Failed to create report');
+      if (!reportRes.ok) {
+        const msg = await parseError(reportRes);
+        throw new Error(msg);
+      }
 
       const newReport = await reportRes.json();
-
-      // Save ID to local storage for "My History" tracking without auth
       const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
       myReports.push(newReport.id);
       localStorage.setItem('my_reports', JSON.stringify(myReports));
 
-      console.log('Report created successfully');
-      navigate('/profile'); // Redirect to profile to see history
-    } catch (error) {
+      navigate('/profile');
+    } catch (error: any) {
       console.error('Submission error:', error);
-      alert('Failed to submit report. Please try again.');
+      showError(error.message || 'Failed to submit report. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const parseError = async (res: Response) => {
+    try {
+      const errorData = await res.json();
+      if (errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          return errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join(' | ');
+        }
+        return typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+      }
+      return 'Server error occurred';
+    } catch {
+      return `Connection error (${res.status})`;
     }
   };
 
@@ -219,6 +244,13 @@ export default function ConfirmationView() {
           <p className="text-center text-[10px] text-signal-coral mt-2 font-mono">Waiting for GPS fix...</p>
         )}
       </div>
+
+      <NotificationPopup
+        isVisible={notification.isVisible}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+      />
     </div>
   );
 }
