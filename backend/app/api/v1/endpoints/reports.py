@@ -136,12 +136,20 @@ async def submit_report(
         try:
             gemini_result = await _verifier.verify(photo_bytes, photo_mime)
 
-            # Fraud → завжди EVIDENCE_VOID незалежно від GNSS
+            # Fraud or not water pollution → reject immediately, don't save
             if gemini_result.status == VerificationStatus.FRAUD_SUSPECTED:
-                trust_level = TrustLevel.EVIDENCE_VOID
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Report rejected: fraud detected. {gemini_result.reasoning}",
+                )
+            if gemini_result.status == VerificationStatus.NOT_POLLUTION:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Report rejected: no water pollution visible. {gemini_result.reasoning}",
+                )
 
             # Низька впевненість → знижуємо до LOW якщо було HIGH
-            elif gemini_result.status == VerificationStatus.LOW_CONFIDENCE:
+            if gemini_result.status == VerificationStatus.LOW_CONFIDENCE:
                 if trust_level == TrustLevel.HIGH:
                     trust_level = TrustLevel.LOW
 
