@@ -15,6 +15,7 @@ import {
   Zap
 } from 'lucide-react';
 import { CitizenReport, SatelliteAnomaly } from '../types';
+import { useSearch } from '../context/SearchContext';
 
 const MOCK_ANOMALIES: SatelliteAnomaly[] = [
   { id: 'an-1', lat: 54.44, lng: 18.57, radius: 800, type: 'Chlorophyll-a', intensity: 0.85, lastDetected: '2026-04-25T06:00:00Z' },
@@ -47,11 +48,27 @@ export default function Dashboard() {
   const [selectedReport, setSelectedReport] = useState<CitizenReport | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { searchQuery } = useSearch();
 
   const filteredReports = useMemo(() => {
-    if (filterCategory === 'All') return MOCK_REPORTS;
-    return MOCK_REPORTS.filter(r => r.category === filterCategory);
-  }, [filterCategory]);
+    let reports = MOCK_REPORTS;
+    
+    // Category filter
+    if (filterCategory !== 'All') {
+      reports = reports.filter(r => r.category === filterCategory);
+    }
+    
+    // Search query filter
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      reports = reports.filter(r => 
+        r.description.toLowerCase().includes(query) || 
+        r.category.toLowerCase().includes(query)
+      );
+    }
+    
+    return reports;
+  }, [filterCategory, searchQuery]);
 
   const stats = useMemo(() => {
     const activePins = MOCK_REPORTS.length;

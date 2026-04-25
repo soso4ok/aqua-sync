@@ -11,6 +11,7 @@ import {
   Navigation2
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useSearch } from '../context/SearchContext';
 
 interface LayoutProps {
   onLogout: () => void;
@@ -18,6 +19,7 @@ interface LayoutProps {
 
 export default function Layout({ onLogout }: LayoutProps) {
   const navigate = useNavigate();
+  const { searchQuery, setSearchQuery } = useSearch();
 
   const handleLogout = () => {
     onLogout();
@@ -108,7 +110,9 @@ export default function Layout({ onLogout }: LayoutProps) {
             <Search className="w-4 h-4 text-satellite-blue/40" />
             <input 
               type="text" 
-              placeholder="Search region or coordinates..." 
+              placeholder="Search category or description..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-sm w-64 placeholder:text-satellite-blue/30 font-mono"
             />
           </div>

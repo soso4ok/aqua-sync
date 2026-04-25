@@ -4,11 +4,12 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Profile from './components/Profile';
+import { SearchProvider } from './context/SearchContext';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,22 +19,24 @@ export default function App() {
   const logout = () => setIsAuthenticated(false);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={
-          isAuthenticated ? <Navigate to="/" /> : <Login onLogin={login} />
-        } />
-        
-        <Route path="/" element={
-          isAuthenticated ? <Layout onLogout={logout} /> : <Navigate to="/login" />
-        }>
-          <Route index element={<Dashboard />} />
-          <Route path="profile" element={<Profile />} />
-        </Route>
+    <SearchProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={
+            isAuthenticated ? <Navigate to="/" /> : <Login onLogin={login} />
+          } />
+          
+          <Route path="/" element={
+            isAuthenticated ? <Layout onLogout={logout} /> : <Navigate to="/login" />
+          }>
+            <Route index element={<Dashboard />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </SearchProvider>
   );
 }
 
