@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   onLogout: () => void;
@@ -19,9 +20,10 @@ export default function Layout({ onLogout }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { searchQuery, setSearchQuery } = useSearch();
+  const { logout, user } = useAuth();
 
   const handleLogout = () => {
-    onLogout();
+    logout();
     navigate('/login');
   };
 
@@ -61,22 +63,6 @@ export default function Layout({ onLogout }: LayoutProps) {
             </div>
             <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300">Dashboard</span>
           </NavLink>
-
-          <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              `flex items-center gap-4 h-12 rounded-xl transition-all duration-200 overflow-hidden ${isActive
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`
-            }
-          >
-            <div className="w-14 h-12 flex items-center justify-center shrink-0">
-              <User className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-sm tracking-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300">Profile</span>
-          </NavLink>
-
           <div className="pt-6 pb-2 px-4 overflow-hidden">
             <div className="h-px bg-white/10 w-full group-hover:hidden"></div>
             <p className="hidden group-hover:block text-[9px] uppercase font-black text-white/20 tracking-widest">Controls</p>
@@ -130,25 +116,20 @@ export default function Layout({ onLogout }: LayoutProps) {
           ) : <div className="flex-1"></div>}
 
           <div className="flex items-center gap-8">
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest leading-none mb-1">Status</span>
-              <span className="text-xs font-black text-rose-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div> SENSOR LIVE</span>
-            </div>
-
-            <button className="relative text-slate-400 hover:text-indigo-600 transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-            </button>
-
-            <div className="flex items-center gap-4 pl-4 border-l border-slate-100">
+            <NavLink
+              to="/settings"
+              className="flex items-center gap-4 pl-4 border-l border-slate-100 hover:opacity-80 transition-all group"
+            >
               <div className="text-right">
-                <p className="text-sm font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">Analyst Mode</p>
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">Security Clearance A</p>
+                <p className="text-sm font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter truncate max-w-[150px]">
+                  {user?.email.split('@')[0] || 'Analyst'}
+                </p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">Admin Profile</p>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shadow-sm shadow-indigo-100 group-hover:border-indigo-300 transition-colors">
                 <User className="w-6 h-6 text-indigo-600" />
               </div>
-            </div>
+            </NavLink>
           </div>
         </header>
 

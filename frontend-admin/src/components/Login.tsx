@@ -1,128 +1,156 @@
-import { useState, FormEvent } from 'react';
-import { Waves, Zap, Globe, ShieldCheck, ArrowRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Waves, Mail, Lock, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LoginProps {
   onLogin: () => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
+  const { login } = useAuth();
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setLoading(true);
+    setError(null);
+
+    const endpoint = isRegister ? '/api/v1/auth/register' : '/api/v1/auth/login';
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail?.[0]?.msg || data.detail || 'Authentication failed');
+      }
+
+      login(data.access_token, data.user);
+      onLogin();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-satellite-blue flex flex-col md:flex-row relative overflow-hidden">
-      {/* Background Decals */}
-      <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
-         <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] border border-white rounded-full"></div>
-         <div className="absolute top-[-15%] right-[-15%] w-[70%] h-[70%] border border-white/50 rounded-full"></div>
-         <div className="absolute bottom-[-20%] left-[-20%] w-[80%] h-[80%] border border-galileo-teal/30 rounded-full"></div>
+    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-6 overflow-hidden relative">
+      {/* Background blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <div className="flex-1 p-8 md:p-24 flex flex-col justify-between relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="bg-galileo-teal p-3 rounded-xl shadow-lg">
-            <Waves className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h1 className="text-white font-bold text-3xl tracking-tight leading-none uppercase">AquaSync</h1>
-            <p className="text-galileo-teal font-mono text-[10px] tracking-[0.4em] mt-1">Satellite Ground Hybrid</p>
-          </div>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[40px] p-10 shadow-2xl">
 
-        <div>
-          <motion.h2 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-white text-5xl md:text-7xl font-bold tracking-tighter leading-[0.9]"
-          >
-            THE SPACE-TO-CITIZEN <br />
-            <span className="text-galileo-teal font-light uppercase italic">FEEDBACK LOOP.</span>
-          </motion.h2>
-          <p className="text-white/60 text-lg md:text-xl mt-8 max-w-lg leading-relaxed">
-            Revolutionizing water monitoring by fusing Copernicus satellite telemetry 
-            with hyper-precise Galileo-verified ground truth.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-8 max-w-md">
-           <div className="space-y-2">
-              <div className="flex items-center gap-2 text-galileo-teal">
-                 <Globe className="w-4 h-4" />
-                 <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Sentinel-2 Ingest</span>
-              </div>
-              <p className="text-white/40 text-[10px] leading-tight">Daily automated multispectral imagery analysis for 12 indices.</p>
-           </div>
-           <div className="space-y-2">
-              <div className="flex items-center gap-2 text-galileo-teal">
-                 <ShieldCheck className="w-4 h-4" />
-                 <span className="text-[10px] font-mono uppercase tracking-widest font-bold">GNSS Anti-Fraud</span>
-              </div>
-              <p className="text-white/40 text-[10px] leading-tight">Strict reliance on Galileo metadata for location verification.</p>
-           </div>
-        </div>
-      </div>
-
-      <div className="flex-1 bg-data-white flex items-center justify-center p-8 md:p-24 relative overflow-hidden">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-sm"
-        >
-          <div className="mb-12">
-            <h3 className="text-3xl font-bold tracking-tight text-satellite-blue">Terminal Entry</h3>
-            <p className="text-satellite-blue/50 text-sm mt-2">Authorized analyst access only.</p>
+          {/* Header */}
+          <div className="flex flex-col items-center mb-10 text-center">
+            <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-600/20 mb-6">
+              <Waves className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-black text-white tracking-tighter mb-2">
+              AQUA SYNC
+            </h1>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest leading-none">
+              Command Station Access
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase tracking-widest text-satellite-blue/40 font-bold ml-1">Personnel ID (Email)</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-5 py-4 bg-white border border-satellite-blue/10 rounded-2xl focus:border-galileo-teal focus:ring-4 focus:ring-galileo-teal/10 outline-none transition-all text-satellite-blue font-medium"
-                placeholder="analyst@aquasync.io"
-              />
+            <div className="space-y-4">
+              {/* Email */}
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  placeholder="Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-white/[0.05] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none focus:border-indigo-500/50 focus:bg-white/[0.08] transition-all"
+                />
+              </div>
+
+              {/* Password */}
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  placeholder="Secret Access Key"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-white/[0.05] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none focus:border-indigo-500/50 focus:bg-white/[0.08] transition-all"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1 text-right">
-              <label className="text-[10px] font-mono uppercase tracking-widest text-satellite-blue/40 font-bold ml-1 text-left block">Access Cipher (Password)</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-5 py-4 bg-white border border-satellite-blue/10 rounded-2xl focus:border-galileo-teal focus:ring-4 focus:ring-galileo-teal/10 outline-none transition-all text-satellite-blue font-medium"
-                placeholder="••••••••"
-              />
-              <button type="button" className="text-[10px] font-mono uppercase text-galileo-teal mt-2 hover:underline">Forgot Cipher?</button>
-            </div>
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex gap-3 items-center"
+                >
+                  <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                  <p className="text-rose-500 text-xs font-bold uppercase tracking-tight">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
               type="submit"
-              className="w-full bg-satellite-blue text-white py-5 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl hover:bg-galileo-teal hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-[20px] py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 group"
             >
-              Initialize Node <ArrowRight className="w-5 h-5" />
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  {isRegister ? 'Initialize Access' : 'Authenticate'}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="mt-12 pt-8 border-t border-satellite-blue/5">
-             <p className="text-[10px] font-mono text-center text-satellite-blue/30 leading-normal uppercase italic">
-                Encryption Standard: AES-256 <br />
-                Node Status: Secured & Calibrated
-             </p>
+          {/* Footer toggle */}
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => setIsRegister(!isRegister)}
+              className="text-slate-500 hover:text-indigo-400 text-xs font-bold uppercase tracking-widest transition-colors"
+            >
+              {isRegister ? 'Already have credentials?' : 'Need new station access? Register'}
+            </button>
           </div>
-        </motion.div>
-      </div>
+
+          <div className="mt-10 pt-8 border-t border-white/5 flex items-center justify-center gap-3 grayscale opacity-30">
+            <ShieldCheck className="w-5 h-5 text-indigo-500" />
+            <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Secure Analyst Layer</span>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
