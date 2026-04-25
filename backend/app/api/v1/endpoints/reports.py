@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_user_optional
+from app.api.dependencies import get_db, get_current_user, get_current_user_optional
 from app.core.config import settings
 from app.models.anomaly import AnomalyPolygon
 from app.models.report import CitizenReport, PollutionType, TrustLevel
@@ -45,6 +45,34 @@ def _penalty_to_trust(penalty: float) -> TrustLevel:
     if penalty >= 0.4:
         return TrustLevel.LOW
     return TrustLevel.HIGH
+
+
+def _coords(report: CitizenReport) -> tuple[float, float]:
+    """Extract (lat, lng) from PostGIS geometry."""
+    try:
+        from geoalchemy2.shape import to_shape
+        pt = to_shape(report.location)
+        return pt.y, pt.x  # shapely Point: x=lng, y=lat
+    except Exception:
+        return 0.0, 0.0
+
+
+def _to_read(r: CitizenReport, points_awarded: int = 0) -> ReportRead:
+    lat, lng = _coords(r)
+    return ReportRead(
+        id=r.id,
+        latitude=lat,
+        longitude=lng,
+        gnss_accuracy_m=r.gnss_accuracy_m,
+        is_high_accuracy=(r.gnss_accuracy_m or 999) < 5.0,
+        description=r.description,
+        photo_url=r.photo_url,
+        pollution_type=r.pollution_type,
+        trust_level=r.trust_level,
+        ai_verdict=r.ai_verdict,
+        submitted_at=r.submitted_at,
+        points_awarded=points_awarded,
+    )
 
 
 def _calc_points(trust_level: TrustLevel, is_high_accuracy: bool) -> int:
@@ -189,6 +217,23 @@ async def submit_report(
     )
 
 
+@router.get("/my", response_model=list[ReportRead])
+async def my_reports(
+    skip: int = 0,
+    limit: int = 50,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = await session.scalars(
+        select(CitizenReport)
+        .where(CitizenReport.user_id == current_user.id)
+        .order_by(CitizenReport.submitted_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return [_to_read(r) for r in rows]
+
+
 @router.get("/", response_model=list[ReportRead])
 async def list_reports(
     skip: int = 0,
@@ -198,18 +243,7 @@ async def list_reports(
     rows = await session.scalars(
         select(CitizenReport).order_by(CitizenReport.submitted_at.desc()).offset(skip).limit(limit)
     )
-    return [
-        ReportRead(
-            id=r.id,
-            gnss_accuracy_m=r.gnss_accuracy_m,
-            description=r.description,
-            pollution_type=r.pollution_type,
-            trust_level=r.trust_level,
-            ai_verdict=r.ai_verdict,
-            submitted_at=r.submitted_at,
-        )
-        for r in rows
-    ]
+    return [_to_read(r) for r in rows]
 
 
 @router.get("/{report_id}", response_model=ReportRead)
@@ -217,12 +251,4 @@ async def get_report(report_id: int, session: AsyncSession = Depends(get_db)):
     report = await session.get(CitizenReport, report_id)
     if not report:
         raise HTTPException(404, detail="Report not found")
-    return ReportRead(
-        id=report.id,
-        gnss_accuracy_m=report.gnss_accuracy_m,
-        description=report.description,
-        pollution_type=report.pollution_type,
-        trust_level=report.trust_level,
-        ai_verdict=report.ai_verdict,
-        submitted_at=report.submitted_at,
-    )
+    return _to_read(report)
