@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Profile from './components/Profile';
+import Settings from './components/Settings';
 import { SearchProvider } from './context/SearchContext';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
           }>
             <Route index element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" />} />

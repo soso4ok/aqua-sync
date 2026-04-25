@@ -263,7 +263,7 @@ export default function Dashboard() {
                     <p className="text-sm font-bold text-satellite-blue">{report.category}</p>
                     <p className="text-[11px] text-satellite-blue/70 mb-2">{report.description}</p>
                     <button className="w-full bg-satellite-blue text-white text-[10px] py-1.5 rounded uppercase font-bold tracking-wider hover:bg-galileo-teal transition-colors">
-                       Analyze Indices
+                       Validate Report
                     </button>
                   </div>
                 </div>
@@ -331,7 +331,7 @@ export default function Dashboard() {
                    
                    <div className="flex gap-2">
                       <button className="flex-1 bg-satellite-blue text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
-                         Valid Signage
+                         Validate Report
                       </button>
                       <button className="w-12 h-12 flex items-center justify-center border border-satellite-blue/10 rounded-xl hover:bg-data-white transition-colors">
                          <Info className="w-5 h-5 text-satellite-blue" />

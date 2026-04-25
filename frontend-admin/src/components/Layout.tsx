@@ -4,7 +4,7 @@ import {
   User, 
   LogOut, 
   Waves, 
-  Settings, 
+  Settings as SettingsIcon, 
   Bell, 
   Search,
   Zap,
@@ -74,10 +74,19 @@ export default function Layout({ onLogout }: LayoutProps) {
              <p className="px-4 text-[10px] uppercase font-mono text-white/30 tracking-widest">Systems</p>
           </div>
 
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-all cursor-pointer">
-            <Settings className="w-5 h-5" />
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
+                isActive 
+                  ? 'bg-galileo-teal text-white shadow-lg' 
+                  : 'text-white/60 hover:bg-white/10 hover:text-white'
+              }`
+            }
+          >
+            <SettingsIcon className="w-5 h-5" />
             <span className="font-medium">Settings</span>
-          </button>
+          </NavLink>
         </nav>
 
         <div className="p-4 border-t border-white/10">
