@@ -4,10 +4,8 @@ const localUrl = import.meta.env.VITE_API_URL_LOCAL || 'http://localhost:8000';
 
 export const API_BASE_URL = isProd ? remoteUrl : localUrl;
 
+// Ensure absolute URL is always returned to bypass any local proxies
 export const getApiUrl = (path: string) => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    if (cleanPath.startsWith('/api')) {
-        return `${API_BASE_URL}${cleanPath}`;
-    }
-    return cleanPath;
+    return `${API_BASE_URL}${cleanPath}`;
 };

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, ChevronRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE = 'http://localhost:8000/api/v1';
+import { getApiUrl } from '../apiConfig';
 
 interface BackendReport {
   id: number;
@@ -31,7 +30,7 @@ export default function ProfileView() {
     try {
       const myReportIds = JSON.parse(localStorage.getItem('my_reports') || '[]');
 
-      const res = await fetch(`${API_BASE}/reports/`);
+      const res = await fetch(getApiUrl('/api/v1/reports/'));
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data: BackendReport[] = await res.json();
 
@@ -43,7 +42,7 @@ export default function ProfileView() {
       myData.forEach(async (report: BackendReport) => {
         if (report.photo_url && !photoUrls[report.photo_url]) {
           try {
-            const urlRes = await fetch(`${API_BASE}/storage/photo-url?key=${encodeURIComponent(report.photo_url)}`);
+            const urlRes = await fetch(getApiUrl(`/api/v1/storage/photo-url?key=${encodeURIComponent(report.photo_url)}`));
             if (urlRes.ok) {
               const { url } = await urlRes.json();
               setPhotoUrls(prev => ({ ...prev, [report.photo_url!]: url }));
