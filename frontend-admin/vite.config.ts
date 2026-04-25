@@ -20,17 +20,21 @@ export default defineConfig(({ mode }) => {
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        },
         '/sh-token': {
           target: 'https://identity.dataspace.copernicus.eu',
           changeOrigin: true,
           rewrite: (path: string) => '/auth/realms/CDSE/protocol/openid-connect/token',
-          secure: true,
+          secure: false,
         },
         '/sh-process': {
           target: 'https://sh.dataspace.copernicus.eu',
           changeOrigin: true,
           rewrite: (path: string) => '/api/v1/process',
-          secure: true,
+          secure: false,
         },
       },
     },

@@ -64,8 +64,8 @@ let tokenExpiry = 0;
 async function getAccessToken(): Promise<string> {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
-    const clientId = import.meta.env.VITE_SH_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_SH_CLIENT_SECRET;
+    const clientId = (import.meta as any).env.VITE_SH_CLIENT_ID;
+    const clientSecret = (import.meta as any).env.VITE_SH_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
         throw new Error('Missing VITE_SH_CLIENT_ID / VITE_SH_CLIENT_SECRET in .env');
@@ -82,9 +82,16 @@ async function getAccessToken(): Promise<string> {
                 client_secret: clientSecret,
             }),
         }
-    );
+    ).catch(err => {
+        console.error('Fetch /sh-token failed:', err);
+        throw err;
+    });
 
-    if (!resp.ok) throw new Error(`Token error: ${resp.status}`);
+    if (!resp.ok) {
+        const text = await resp.text();
+        console.error('SH Token Error:', resp.status, text);
+        throw new Error(`Token error: ${resp.status}`);
+    }
     const data = await resp.json();
     cachedToken = data.access_token;
     tokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // refresh 60s early
@@ -96,14 +103,11 @@ async function fetchWaterQualityImage(
     bbox: [number, number, number, number],
     width: number,
     height: number,
+    dateFrom: string,
+    dateTo: string,
     signal?: AbortSignal
 ): Promise<string> {
     const token = await getAccessToken();
-
-    // Use recent 30-day window for freshest data
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 60);
 
     const body = {
         input: {
@@ -115,10 +119,10 @@ async function fetchWaterQualityImage(
                 type: 'sentinel-2-l2a',
                 dataFilter: {
                     timeRange: {
-                        from: from.toISOString(),
-                        to: to.toISOString(),
+                        from: dateFrom,
+                        to: dateTo,
                     },
-                    mosaickingOrder: 'leastCC',
+                    mosaickingOrder: 'mostRecent',
                 },
             }],
         },
@@ -139,10 +143,14 @@ async function fetchWaterQualityImage(
         },
         body: JSON.stringify(body),
         signal,
+    }).catch(err => {
+        if (err.name !== 'AbortError') console.error('Fetch /sh-process failed:', err);
+        throw err;
     });
 
     if (!resp.ok) {
         const text = await resp.text();
+        console.error('SH Process Error:', resp.status, text);
         throw new Error(`SH API ${resp.status}: ${text.slice(0, 200)}`);
     }
 
@@ -154,9 +162,11 @@ async function fetchWaterQualityImage(
 interface SentinelWaterLayerProps {
     enabled?: boolean;
     opacity?: number;
+    dateFrom?: string;
+    dateTo?: string;
 }
 
-export default function SentinelWaterLayer({ enabled = true, opacity = 0.7 }: SentinelWaterLayerProps) {
+export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, dateFrom, dateTo }: SentinelWaterLayerProps) {
     const map = useMap();
     const overlayRef = useRef<L.ImageOverlay | null>(null);
     const abortRef = useRef<AbortController | null>(null);
@@ -202,7 +212,10 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7 }: Se
         setError(null);
 
         try {
-            const blobUrl = await fetchWaterQualityImage(bbox, width, height, controller.signal);
+            // Default to last 60 days if not specified
+            const to = dateTo || new Date().toISOString();
+            const fromDate = dateFrom || (() => { const d = new Date(); d.setDate(d.getDate() - 60); return d.toISOString(); })();
+            const blobUrl = await fetchWaterQualityImage(bbox, width, height, fromDate, to, controller.signal);
 
             if (controller.signal.aborted) {
                 URL.revokeObjectURL(blobUrl);
@@ -228,12 +241,17 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7 }: Se
         } catch (err: any) {
             if (err.name !== 'AbortError') {
                 console.error('SentinelWaterLayer error:', err);
-                setError(err.message?.slice(0, 80) || 'Failed to load');
+                // Give a more descriptive error if it's a TypeError (usually NetworkError)
+                const msg = err instanceof TypeError ? 'Network/Proxy Error' : (err.message || 'Unknown error');
+                setError(msg.slice(0, 80));
             }
         } finally {
-            if (!controller.signal.aborted) setLoading(false);
+            // Only set loading to false if this is still the most recent request
+            if (controller === abortRef.current) {
+                setLoading(false);
+            }
         }
-    }, [map, enabled, opacity]);
+    }, [map, enabled, opacity, dateFrom, dateTo]);
 
     // Debounced map move handler
     useMapEvents({
@@ -247,42 +265,38 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7 }: Se
         },
     });
 
-    // Initial load
+    // Re-fetch whenever loadOverlay identity changes (which encodes all deps: map, enabled, opacity, dateFrom, dateTo)
     useEffect(() => {
         loadOverlay();
+    }, [loadOverlay]);
+
+    // Cleanup on unmount only
+    useEffect(() => {
         return () => {
             if (abortRef.current) abortRef.current.abort();
             if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current);
             if (overlayRef.current) map.removeLayer(overlayRef.current);
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [enabled]);
+    }, []);
 
-    // Update opacity
+    // Update opacity without re-fetching
     useEffect(() => {
         if (overlayRef.current) overlayRef.current.setOpacity(opacity);
     }, [opacity]);
-
-    // Remove overlay when disabled
-    useEffect(() => {
-        if (!enabled && overlayRef.current) {
-            map.removeLayer(overlayRef.current);
-            overlayRef.current = null;
-        }
-    }, [enabled]);
 
     return (
         <>
             {/* Loading indicator */}
             {loading && (
-                <div className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-4 py-3 flex items-center gap-3 border border-galileo-teal/30">
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-6 py-3 flex items-center gap-3 border border-galileo-teal/30">
                     <div className="w-4 h-4 border-2 border-galileo-teal border-t-transparent rounded-full animate-spin" />
                     <span className="text-xs font-mono text-satellite-blue/70">Loading satellite data…</span>
                 </div>
             )}
             {/* Error / zoom hint */}
             {!loading && error && (
-                <div className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-4 py-3 border border-signal-coral/30">
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-6 py-3 border border-signal-coral/30">
                     <span className="text-xs font-mono text-signal-coral">{error}</span>
                 </div>
             )}
