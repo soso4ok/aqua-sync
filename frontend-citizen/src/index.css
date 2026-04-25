@@ -1,80 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Space+Grotesk:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Roboto+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, monospace;
-
-  /* AquaSync Custom Colors - Precise Theme Palette */
-  --color-satellite: #0A2463;
-  --color-galileo: #3E92CC;
-  --color-signal: #FF825C;
-  --color-data: #F4F7F6;
+  --font-chakra: "Chakra Petch", monospace;
   
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.75rem;
-  --radius-3xl: 2.25rem;
-  
-  --shadow-smooth: 0 10px 30px -10px rgba(10, 36, 99, 0.1);
+  --color-satellite-blue: #0A2463;
+  --color-galileo-teal: #3E92CC;
+  --color-signal-coral: #FF825C;
+  --color-data-white: #F4F7F6;
 }
 
 @layer base {
   body {
-    @apply bg-[#F8FAFB] text-satellite font-sans antialiased overflow-x-hidden;
-  }
-  
-  h1, h2, h3, h4 {
-    @apply tracking-tight font-bold;
+    @apply bg-data-white text-satellite-blue font-sans;
   }
 }
 
-/* Custom Utilities for the Smooth Aesthetic */
-@layer utilities {
-  .glass-dark {
-    background-color: var(--color-satellite);
-    opacity: 0.9;
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .card-smooth {
-    background-color: white;
-    border-radius: var(--radius-3xl);
-    border: 1px solid rgba(10, 36, 99, 0.05);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s ease;
-  }
-  .card-smooth:hover {
-    box-shadow: var(--shadow-md);
-  }
-  .tech-border {
-    border: 1px solid rgba(10, 36, 99, 0.05);
-  }
-  .gradient-header {
-    background: linear-gradient(135deg, #0A2463 0%, #3E92CC 100%);
-  }
-}
-
-@keyframes sweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.camera-container video {
+/* Leaflet Overrides */
+.leaflet-container {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  background: #f4f7f6;
 }
 
-/* Scrollbar styling for technical feel */
-::-webkit-scrollbar {
-  width: 6px;
+.custom-marker-report {
+  @apply bg-signal-coral border-2 border-white rounded-full shadow-lg;
+  width: 12px;
+  height: 12px;
 }
-::-webkit-scrollbar-track {
-  @apply bg-data;
+
+.custom-marker-anomaly {
+  @apply bg-satellite-blue/30 border border-satellite-blue rounded-full;
+  animation: pulse 2s infinite;
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-satellite/10 rounded-full;
-}
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-satellite/20;
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 0.8; }
 }

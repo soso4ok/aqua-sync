@@ -1,67 +1,27 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import MobileLayout from './components/MobileLayout';
+import CameraView from './components/CameraView';
+import ProfileView from './components/ProfileView';
+import DetailView from './components/DetailView';
+import ShopView from './components/ShopView';
 
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import Onboarding from './pages/Onboarding';
-import Home from './pages/Home';
-import ReportForm from './pages/ReportForm';
-import Profile from './pages/Profile';
-import ReportsHistory from './pages/ReportsHistory';
-import Community from './pages/Community';
-import Scan from './pages/Scan';
-import Navigation from './components/Navigation';
-
-function AppContent({ hasCompletedOnboarding, setHasCompletedOnboarding }: { 
-  hasCompletedOnboarding: boolean, 
-  setHasCompletedOnboarding: (v: boolean) => void 
-}) {
-  const location = useLocation();
-  const hideNav = ['/report', '/scan'].includes(location.pathname);
-
-  return (
-    <div className="flex flex-col min-h-screen bg-data">
-      <main className="flex-grow pb-24 md:pb-0 md:pl-20">
-        <Routes>
-          <Route 
-            path="/" 
-            element={!hasCompletedOnboarding ? <Navigate to="/onboarding" /> : <Navigate to="/home" />} 
-          />
-          <Route path="/onboarding" element={<Onboarding onComplete={() => setHasCompletedOnboarding(true)} />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/report" element={<ReportForm />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/history" element={<ReportsHistory />} />
-          <Route path="/community" element={<Community />} />
-          <Route path="/scan" element={<Scan />} />
-        </Routes>
-      </main>
-      
-      {hasCompletedOnboarding && !hideNav && <Navigation />}
-    </div>
-  );
-}
+import ConfirmationView from './components/ConfirmationView';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-
-  useEffect(() => {
-    const onboarding = localStorage.getItem('onboarding_complete');
-    if (onboarding) setHasCompletedOnboarding(true);
-    
-    const auth = localStorage.getItem('auth_token');
-    if (auth) setIsAuthenticated(true);
-  }, []);
-
   return (
     <Router>
-      <AppContent 
-        hasCompletedOnboarding={hasCompletedOnboarding} 
-        setHasCompletedOnboarding={setHasCompletedOnboarding} 
-      />
+      <Routes>
+        <Route path="/" element={<MobileLayout />}>
+          <Route index element={<CameraView />} />
+          <Route path="profile" element={<ProfileView />} />
+        </Route>
+        
+        <Route path="/report/:id" element={<DetailView />} />
+        <Route path="/shop" element={<ShopView />} />
+        <Route path="/confirm" element={<ConfirmationView />} />
+
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </Router>
   );
 }

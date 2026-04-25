@@ -91,6 +91,7 @@ async def submit_report(
     tags: str = Form(default=""),  # comma-separated tag ids from PWA
     captured_at: str | None = Form(None),
     photo: UploadFile | None = File(None),
+    photo_key: str | None = Form(None),
     session: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -154,10 +155,10 @@ async def submit_report(
         gemini_pollution_type = None
 
     # --- Завантаження фото в R2 ---
-    photo_key: str | None = None
-    if photo_bytes:
+    final_photo_key: str | None = photo_key
+    if photo_bytes and not final_photo_key:
         try:
-            photo_key = upload_report_photo(photo_bytes, photo_mime)
+            final_photo_key = upload_report_photo(photo_bytes, photo_mime)
         except Exception:
             pass  # R2 не налаштований — продовжуємо без фото
 
@@ -170,7 +171,7 @@ async def submit_report(
         location=point,
         gnss_accuracy_m=gnss_accuracy_m,
         description=description,
-        photo_url=photo_key,
+        photo_url=final_photo_key,
         pollution_type=gemini_pollution_type or _tags_to_pollution_type(tag_list),
         trust_level=trust_level,
         ai_verdict=ai_verdict,
