@@ -76,25 +76,8 @@ export default function ConfirmationView() {
     setIsSubmitting(true);
 
     try {
-      // 1. Get Presigned URL
-      const storageUrl = getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg');
-      const storageRes = await fetch(storageUrl);
-      if (!storageRes.ok) {
-        const msg = await parseError(storageRes);
-        throw new Error(msg);
-      }
-      const { upload_url, key } = await storageRes.json();
-
-      // 2. Upload Image
       const blob = await (await fetch(imgSrc)).blob();
-      const uploadRes = await fetch(upload_url, {
-        method: 'PUT',
-        body: blob,
-        headers: { 'Content-Type': 'image/jpeg' }
-      });
-      if (!uploadRes.ok) throw new Error('Failed to upload image to storage');
 
-      // 3. Create Report
       const formData = new FormData();
       formData.append('latitude', coords.lat.toString());
       formData.append('longitude', coords.lng.toString());
@@ -102,22 +85,22 @@ export default function ConfirmationView() {
       formData.append('description', description);
       formData.append('tags', selectedTags.join(','));
       formData.append('captured_at', currentTime);
-      formData.append('photo_key', key);
+      formData.append('photo', blob, 'photo.jpg');
 
-      const reportUrl = getApiUrl('/api/v1/reports/');
-      const reportRes = await fetch(reportUrl, {
+      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
         method: 'POST',
         body: formData,
       });
 
+      const data = await reportRes.json();
+
       if (!reportRes.ok) {
-        const msg = await parseError(reportRes);
-        throw new Error(msg);
+        alert(data.detail || 'Failed to submit report.');
+        return;
       }
 
-      const newReport = await reportRes.json();
       const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
-      myReports.push(newReport.id);
+      myReports.push(data.id);
       localStorage.setItem('my_reports', JSON.stringify(myReports));
 
       navigate('/profile');
