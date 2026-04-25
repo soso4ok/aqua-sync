@@ -49,34 +49,51 @@ class GeminiPhotoVerifier:
         return self._parse_response(response.text or "")
 
     def _build_classification_prompt(self) -> str:
-        return """You are an AI for a water quality monitoring platform (AquaSync).
-Analyze this photo and respond ONLY with a valid JSON object — no markdown, no explanation outside JSON.
+        return """Act as an expert environmental forensic analyst for AquaSync.
+Your task is to verify if a photo submitted by a citizen shows real water pollution.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. Do not include markdown blocks or any text outside the JSON.
 
 {
+  "is_water_visible": true | false,
+  "contains_people": true | false,
   "is_water_pollution": true | false,
   "pollution_type": "OIL_SLICK" | "ALGAL_BLOOM" | "FOAM" | "DISCOLORATION" | "DEBRIS" | "UNKNOWN",
   "confidence": 0.0-1.0,
   "is_fraud": true | false,
   "fraud_reason": "string or null",
-  "reasoning": "one sentence in English"
+  "reasoning": "A concise explanation of your visual analysis"
 }
 
-Classification rules:
-- is_water_pollution: true ONLY if you clearly see water contamination (oil sheen, green algal bloom, chemical discoloration, debris floating in water, unnatural foam on water surface)
-- is_fraud: true if the image looks like a re-photographed screen/monitor (visible pixels, moiré pattern), a stock photo watermark, or is completely unrelated to water
-- confidence: your certainty level from 0.0 to 1.0
-- pollution_type: best matching category; use UNKNOWN if pollution is present but type is unclear
-- reasoning: brief one-sentence explanation of your decision"""
+STRICT VALIDATION STEPS:
+1. WATER CHECK: Is there a body of water (river, lake, sea, canal) visible? If not, set is_water_pollution to false.
+2. HUMAN FILTER: Is the main subject a person, a selfie, or a crowd? We DO NOT accept photos of people. If people are the focus, set is_water_pollution to false.
+3. RELEVANCE: Is this a photo of a random object (car, building, animal, food)? If it's unrelated to water bodies, set is_water_pollution to false.
+4. POLLUTION ANALYSIS: Only set is_water_pollution to true if you see:
+   - Rainbow sheen or "oil film" on the surface (OIL_SLICK)
+   - Heavy green/blue-green algal crust or "pea soup" texture (ALGAL_BLOOM)
+   - Unnatural white or brown chemical foam/bubbles (FOAM)
+   - Water that is unnaturally black, red, milky, or bright green (DISCOLORATION)
+   - Floating trash, plastics, or industrial waste (DEBRIS)
+5. FRAUD DETECTION: Set is_fraud to true if:
+   - You see moiré patterns, RGB pixels, or glare suggesting a photo of a screen.
+   - The image has stock photo watermarks or UI elements.
+   - The image looks AI-generated or physically impossible.
+
+CONFIDENCE SCORING:
+0.9+ Clear evidence. 0.6-0.8 Visible but poor lighting/distance. <0.5 Ambiguous or low quality."""
 
     def _parse_response(self, raw: str) -> GeminiVerificationResult:
         """Extract JSON from Gemini response (handles markdown code blocks)."""
+        # 1. Шукаємо JSON у відповіді
         json_match = re.search(r"\{.*?\}", raw, re.DOTALL)
         if not json_match:
             return GeminiVerificationResult(
                 status=VerificationStatus.LOW_CONFIDENCE,
                 pollution_type=PollutionType.UNKNOWN,
                 confidence=0.0,
-                reasoning="AI response could not be parsed",
+                reasoning="AI response could not be parsed as JSON",
             )
 
         try:
@@ -89,31 +106,37 @@ Classification rules:
                 reasoning="Invalid JSON from AI model",
             )
 
-        is_fraud: bool = data.get("is_fraud", False)
-        is_pollution: bool = data.get("is_water_pollution", False)
-        confidence: float = float(data.get("confidence", 0.5))
+        # 2. Дістаємо дані
+        is_fraud = data.get("is_fraud", False)
+        is_pollution = data.get("is_water_pollution", False)
+        is_water = data.get("is_water_visible", True)
+        has_people = data.get("contains_people", False)
+        confidence = float(data.get("confidence", 0.0))
+        reasoning = data.get("reasoning", "")
 
-        # Determine verification status
+        # 3. Визначаємо статус
         if is_fraud:
             status = VerificationStatus.FRAUD_SUSPECTED
+            reasoning = f"FRAUD: {data.get('fraud_reason') or 'Detected screen capture/forgery'}."
+        elif has_people:
+            status = VerificationStatus.NOT_POLLUTION
+            reasoning = "Rejected: Photo contains people/selfies instead of environmental data."
+        elif not is_water:
+            status = VerificationStatus.NOT_POLLUTION
+            reasoning = "Rejected: No water body detected in the image."
         elif not is_pollution:
             status = VerificationStatus.NOT_POLLUTION
-        elif confidence >= 0.6:
+        elif confidence >= 0.7:
             status = VerificationStatus.VERIFIED
         else:
             status = VerificationStatus.LOW_CONFIDENCE
 
-        # Map pollution_type string → enum
-        raw_type: str = data.get("pollution_type", "UNKNOWN")
+        # 4. Мапимо pollution_type з рядка в Enum
+        raw_type = data.get("pollution_type", "UNKNOWN")
         try:
             pollution_type = PollutionType(raw_type)
         except ValueError:
             pollution_type = PollutionType.UNKNOWN
-
-        reasoning: str = data.get("reasoning", "")
-        fraud_reason: str | None = data.get("fraud_reason")
-        if fraud_reason:
-            reasoning = f"FRAUD DETECTED: {fraud_reason}. {reasoning}"
 
         return GeminiVerificationResult(
             status=status,
