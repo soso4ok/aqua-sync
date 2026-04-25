@@ -116,6 +116,12 @@ async def submit_report(
         ts_result = _gnss.validate_timestamp(captured_dt, datetime.now(timezone.utc))
         penalty = _gnss.combined_trust_penalty(accuracy_result, ts_result)
 
+    if gnss_accuracy_m > 50.0:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Location accuracy too low ({gnss_accuracy_m:.0f}m). Move to open area and try again.",
+        )
+
     trust_level = _penalty_to_trust(penalty)
     is_high_accuracy = gnss_accuracy_m < 5.0
 
@@ -162,8 +168,10 @@ async def submit_report(
                 f"GNSS: {accuracy_result.reason} | "
                 f"AI ({gemini_result.confidence:.0%}): {gemini_result.reasoning}"
             )
+        except HTTPException:
+            raise
         except Exception:
-            gemini_pollution_type = None  # Gemini недоступний — продовжуємо без нього
+            gemini_pollution_type = None  # Gemini unavailable — continue without AI
     else:
         gemini_pollution_type = None
 
