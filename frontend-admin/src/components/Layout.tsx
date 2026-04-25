@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   User, 
@@ -19,12 +19,15 @@ interface LayoutProps {
 
 export default function Layout({ onLogout }: LayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { searchQuery, setSearchQuery } = useSearch();
 
   const handleLogout = () => {
     onLogout();
     navigate('/login');
   };
+
+  const isDashboard = location.pathname === '/';
 
   return (
     <div className="flex h-screen bg-data-white overflow-hidden">
@@ -115,16 +118,18 @@ export default function Layout({ onLogout }: LayoutProps) {
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-white border-b border-satellite-blue/10 flex items-center justify-between px-8 z-10">
-          <div className="flex items-center gap-4 bg-data-white px-4 py-2 rounded-full border border-satellite-blue/5">
-            <Search className="w-4 h-4 text-satellite-blue/40" />
-            <input 
-              type="text" 
-              placeholder="Search category or description..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm w-64 placeholder:text-satellite-blue/30 font-mono"
-            />
-          </div>
+          {isDashboard ? (
+            <div className="flex items-center gap-4 bg-data-white px-4 py-2 rounded-full border border-satellite-blue/5">
+              <Search className="w-4 h-4 text-satellite-blue/40" />
+              <input 
+                type="text" 
+                placeholder="Search category or description..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm w-64 placeholder:text-satellite-blue/30 font-mono"
+              />
+            </div>
+          ) : <div className="flex-1"></div>}
 
           <div className="flex items-center gap-6">
             <div className="flex flex-col items-end">
