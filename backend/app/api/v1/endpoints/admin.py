@@ -16,8 +16,8 @@ _security = SecurityService()
 
 def _token_pair(user: User) -> TokenResponse:
     return TokenResponse(
-        access_token=_security.create_access_token(str(user.id)),
-        refresh_token=_security.create_refresh_token(str(user.id)),
+        access_token=_security.create_access_token(str(user.id), user.token_version),
+        refresh_token=_security.create_refresh_token(str(user.id), user.token_version),
         user=UserRead.model_validate(user),
     )
 

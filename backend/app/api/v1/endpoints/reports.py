@@ -154,10 +154,12 @@ async def submit_report(
                     detail=f"Report rejected: no water pollution visible. {gemini_result.reasoning}",
                 )
 
-            # Низька впевненість → знижуємо до LOW якщо було HIGH
+            # Low confidence with a photo → not worth saving
             if gemini_result.status == VerificationStatus.LOW_CONFIDENCE:
-                if trust_level == TrustLevel.HIGH:
-                    trust_level = TrustLevel.LOW
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Report rejected: low confidence this is water pollution ({gemini_result.confidence:.0%}). {gemini_result.reasoning}",
+                )
 
             # Gemini розпізнав тип забруднення → використовуємо замість тегів
             if gemini_result.pollution_type != PollutionType.UNKNOWN:

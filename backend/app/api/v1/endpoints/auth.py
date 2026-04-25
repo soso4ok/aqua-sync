@@ -17,8 +17,8 @@ _limiter = Limiter(key_func=get_remote_address)
 
 def _token_pair(user: User) -> TokenResponse:
     return TokenResponse(
-        access_token=_security.create_access_token(str(user.id)),
-        refresh_token=_security.create_refresh_token(str(user.id)),
+        access_token=_security.create_access_token(str(user.id), user.token_version),
+        refresh_token=_security.create_refresh_token(str(user.id), user.token_version),
         user=UserRead.model_validate(user),
     )
 
@@ -67,6 +67,17 @@ async def refresh(request: Request, refresh_token: str, session: AsyncSession = 
     return _token_pair(user)
 
 
-@router.get("/me", response_model=UserRead)
+@router.get("/me", response_model=TokenResponse)
 async def me(current_user: User = Depends(get_current_user)):
-    return UserRead.model_validate(current_user)
+    """Returns current user data with a fresh token pair."""
+    return _token_pair(current_user)
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Invalidate all existing tokens by incrementing token_version."""
+    current_user.token_version += 1
+    await session.commit()
