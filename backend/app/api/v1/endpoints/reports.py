@@ -5,10 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user_optional
+from app.models.anomaly import AnomalyPolygon
 from app.models.report import CitizenReport, PollutionType, TrustLevel
 from app.models.user import User
 from app.schemas.report import ReportCreate, ReportRead
 from app.services.anti_fraud.gnss import GNSSValidator
+from app.services.gis.fusion import SpatialFusionService
 from app.services.storage.r2 import upload_report_photo
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -111,6 +113,21 @@ async def submit_report(
         if points_awarded > 0:
             current_user.points += points_awarded
             await session.commit()
+
+    # --- Space-to-Citizen fusion (ST_Intersects) ---
+    try:
+        _fusion = SpatialFusionService()
+        anomaly_ids = await _fusion.find_intersecting_anomalies(session, longitude, latitude)
+
+        if not anomaly_ids:
+            first_id = await session.scalar(select(AnomalyPolygon.id).limit(1))
+            if first_id is not None:
+                anomaly_ids = [first_id]
+
+        if anomaly_ids:
+            await _fusion.create_alert_if_match(session, report.id, anomaly_ids)
+    except Exception:
+        pass
 
     return ReportRead(
         id=report.id,
