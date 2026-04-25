@@ -32,6 +32,7 @@ class ReportRead(BaseModel):
     gnss_accuracy_m: Optional[float]
     is_high_accuracy: bool = False
     description: Optional[str]
+    photo_url: Optional[str] = None
     pollution_type: PollutionType
     trust_level: TrustLevel
     ai_verdict: Optional[str]
