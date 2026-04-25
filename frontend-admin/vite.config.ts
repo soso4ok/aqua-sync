@@ -5,6 +5,9 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const backendTarget = env.VITE_APP_ENV === 'prod' ? env.VITE_API_URL_REMOTE : env.VITE_API_URL_LOCAL;
+  console.log(`[ViteConfig] Backend target set to: ${backendTarget} (Env: ${env.VITE_APP_ENV || 'local'})`);
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -21,9 +24,7 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
-          target: env.VITE_APP_ENV === 'prod'
-            ? env.VITE_API_URL_REMOTE
-            : env.VITE_API_URL_LOCAL,
+          target: backendTarget,
           changeOrigin: true,
         },
         '/sh-token': {

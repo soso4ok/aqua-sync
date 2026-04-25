@@ -17,6 +17,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import SentinelWaterLayer from './SentinelWaterLayer';
+import { getApiUrl } from '../apiConfig';
 
 // ─── Types ──────────────────────────────────────────────
 interface Report {
@@ -108,7 +109,10 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [repRes, alRes] = await Promise.all([fetch('/api/v1/reports/'), fetch('/api/v1/alerts/')]);
+        const [repRes, alRes] = await Promise.all([
+          fetch(getApiUrl('/api/v1/reports/')),
+          fetch(getApiUrl('/api/v1/alerts/'))
+        ]);
         if (repRes.ok) setReports(await repRes.json());
         if (alRes.ok) setAlerts(await alRes.json());
       } finally { setLoading(false); }

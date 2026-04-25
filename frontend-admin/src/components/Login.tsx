@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Waves, Mail, Lock, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiUrl } from '../apiConfig';
 
 interface LoginProps {
   onLogin: () => void;
@@ -20,7 +21,7 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     setError(null);
 
-    const endpoint = isRegister ? '/api/v1/auth/register' : '/api/v1/auth/login';
+    const endpoint = getApiUrl(isRegister ? '/api/v1/auth/register' : '/api/v1/auth/login');
 
     try {
       const response = await fetch(endpoint, {
