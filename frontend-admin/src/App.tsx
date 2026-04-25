@@ -13,7 +13,7 @@ import Settings from './components/Settings';
 import { SearchProvider } from './context/SearchContext';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Simple auth simulation
   const login = () => setIsAuthenticated(true);
@@ -26,7 +26,7 @@ export default function App() {
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/" /> : <Login onLogin={login} />
           } />
-          
+
           <Route path="/" element={
             isAuthenticated ? <Layout onLogout={logout} /> : <Navigate to="/login" />
           }>

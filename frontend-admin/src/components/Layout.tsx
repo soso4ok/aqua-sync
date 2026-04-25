@@ -1,11 +1,11 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  User, 
-  LogOut, 
-  Waves, 
-  Settings as SettingsIcon, 
-  Bell, 
+import {
+  LayoutDashboard,
+  User,
+  LogOut,
+  Waves,
+  Settings as SettingsIcon,
+  Bell,
   Search,
   Zap,
   Navigation2
@@ -48,10 +48,9 @@ export default function Layout({ onLogout }: LayoutProps) {
             to="/"
             end
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-galileo-teal text-white shadow-lg' 
-                  : 'text-white/60 hover:bg-white/10 hover:text-white'
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
+                ? 'bg-galileo-teal text-white shadow-lg'
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`
             }
           >
@@ -62,10 +61,9 @@ export default function Layout({ onLogout }: LayoutProps) {
           <NavLink
             to="/profile"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-galileo-teal text-white shadow-lg' 
-                  : 'text-white/60 hover:bg-white/10 hover:text-white'
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
+                ? 'bg-galileo-teal text-white shadow-lg'
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`
             }
           >
@@ -74,16 +72,15 @@ export default function Layout({ onLogout }: LayoutProps) {
           </NavLink>
 
           <div className="pt-4 pb-2">
-             <p className="px-4 text-[10px] uppercase font-mono text-white/30 tracking-widest">Systems</p>
+            <p className="px-4 text-[10px] uppercase font-mono text-white/30 tracking-widest">Systems</p>
           </div>
 
           <NavLink
             to="/settings"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-galileo-teal text-white shadow-lg' 
-                  : 'text-white/60 hover:bg-white/10 hover:text-white'
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
+                ? 'bg-galileo-teal text-white shadow-lg'
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`
             }
           >
@@ -93,17 +90,6 @@ export default function Layout({ onLogout }: LayoutProps) {
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
-             <div className="flex items-center gap-2 mb-2">
-                <Navigation2 className="w-3 h-3 text-galileo-teal" />
-                <span className="text-[10px] font-mono text-white/50 uppercase tracking-tighter">Galileo Status</span>
-             </div>
-             <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">Active (12 Sat)</span>
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-             </div>
-          </div>
-
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-signal-coral hover:bg-signal-coral/10 transition-all cursor-pointer"
@@ -121,9 +107,9 @@ export default function Layout({ onLogout }: LayoutProps) {
           {isDashboard ? (
             <div className="flex items-center gap-4 bg-data-white px-4 py-2 rounded-full border border-satellite-blue/5">
               <Search className="w-4 h-4 text-satellite-blue/40" />
-              <input 
-                type="text" 
-                placeholder="Search category or description..." 
+              <input
+                type="text"
+                placeholder="Search category or description..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-transparent border-none outline-none text-sm w-64 placeholder:text-satellite-blue/30 font-mono"
@@ -136,7 +122,7 @@ export default function Layout({ onLogout }: LayoutProps) {
               <span className="text-xs font-mono text-satellite-blue/40 uppercase">Last Sync</span>
               <span className="text-sm font-medium">10:42 AM (Copernicus)</span>
             </div>
-            
+
             <button className="relative text-satellite-blue/60 hover:text-satellite-blue transition-colors">
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-signal-coral rounded-full border-2 border-white"></span>
