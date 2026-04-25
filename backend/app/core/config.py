@@ -20,7 +20,16 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60
+    JWT_EXPIRE_MINUTES: int = 15
+    JWT_REFRESH_EXPIRE_DAYS: int = 7
+
+    ADMIN_SECRET_KEY: str = "change-admin-secret-in-production"
+
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:4173",
+    ]
 
     GEMINI_API_KEY: str = ""
 

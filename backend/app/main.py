@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.api.v1.api import router as v1_router
+from app.core.config import settings
 from app.core.exceptions import AquaSyncException, aquasync_exception_handler
 from app.worker.scheduler import AquaSyncScheduler
 
@@ -34,7 +35,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
