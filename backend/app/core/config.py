@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASSWORD: str
     DB_NAME: str
+    DB_SSL: bool = False
     PORT: int = 3000
 
     SENTINEL_HUB_CLIENT_ID: str
@@ -34,13 +35,17 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
     @property
     def database_url(self) -> str:
-        return (
+        base = (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?ssl=require"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
+        if self.DB_SSL:
+            return f"{base}?ssl=require"
+        return base
 
 
 settings = Settings()
