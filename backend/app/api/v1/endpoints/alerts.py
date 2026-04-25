@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, WebSocket
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, WebSocket
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.models.alert import Alert, AlertStatus
 from app.schemas.alert import AlertRead, AlertUpdate
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -13,7 +17,11 @@ async def list_alerts(
     limit: int = 50,
     session: AsyncSession = Depends(get_db),
 ):
-    raise NotImplementedError
+    """Повертає список алертів для Admin Dashboard (найновіші спочатку)."""
+    rows = await session.scalars(
+        select(Alert).order_by(Alert.created_at.desc()).offset(skip).limit(limit)
+    )
+    return list(rows.all())
 
 
 @router.patch("/{alert_id}", response_model=AlertRead)
@@ -22,7 +30,22 @@ async def update_alert(
     body: AlertUpdate,
     session: AsyncSession = Depends(get_db),
 ):
-    raise NotImplementedError
+    """Оновити статус або нотатки алерту. При переході в RESOLVED — проставляє resolved_at."""
+    alert = await session.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    if body.status is not None:
+        alert.status = body.status
+        if body.status == AlertStatus.RESOLVED:
+            alert.resolved_at = datetime.now(timezone.utc)
+
+    if body.notes is not None:
+        alert.notes = body.notes
+
+    await session.commit()
+    await session.refresh(alert)
+    return alert
 
 
 @router.websocket("/ws")
