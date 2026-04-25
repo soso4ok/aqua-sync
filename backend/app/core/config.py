@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         "http://localhost:4173",
         "https://fastapi-app-154466642830.europe-central2.run.app",
         "https://aqua-sync-kohl.vercel.app",
+        "https://aqua-sync-e6pg.vercel.app"
     ]
 
     GEMINI_API_KEY: str = ""
