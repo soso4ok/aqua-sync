@@ -1,36 +1,67 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, MapPin, CheckCircle2, Clock, Info, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { ReportStatus } from '../types';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
-const MOCK_REPORTS: ReportStatus[] = [
-  { 
-    id: '1', category: 'Algal Bloom', date: '2026-04-24', status: 'Verified', 
-    description: 'Significant green coloration near the public beach area. Water seems opaque. Local wind speed was low, allowing the bloom to accumulate in surface layers.',
-    coordinates: { lat: 54.438, lng: 18.575 },
-    imageUrl: 'https://images.unsplash.com/photo-1621451537084-482c73073a0f?auto=format&fit=crop&q=80&w=800'
-  },
-  { 
-    id: '2', category: 'Marine Debris', date: '2026-04-20', status: 'Pending',
-    description: 'Floating plastics and net fragments caught in the reeds. Appears to be drifting from the harbor direction after the heavy rainfall.',
-    coordinates: { lat: 54.398, lng: 18.655 },
-    imageUrl: 'https://images.unsplash.com/photo-1618477430045-8f6a9179979b?auto=format&fit=crop&q=80&w=800'
-  },
-  { 
-    id: '3', category: 'Oil Leak', date: '2026-04-15', status: 'Verified',
-    description: 'Visible rainbow sheen on the surface near the industrial dock. Originating from suspected tank discharge.',
-    coordinates: { lat: 54.410, lng: 18.600 },
-    imageUrl: 'https://images.unsplash.com/photo-15426019069d0-b4d9235e6171?auto=format&fit=crop&q=80&w=800'
-  }
-];
+const API_BASE = 'http://localhost:8000/api/v1';
+
+interface BackendReport {
+  id: number;
+  latitude: number;
+  longitude: number;
+  description: string;
+  photo_url: string | null;
+  pollution_type: string;
+  trust_level: string;
+  ai_verdict: string | null;
+  submitted_at: string;
+  points_awarded: number;
+}
 
 export default function DetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const report = MOCK_REPORTS.find(r => r.id === id);
+  const [report, setReport] = useState<BackendReport | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!report) return <div>Report not found</div>;
+  useEffect(() => {
+    fetchReport();
+  }, [id]);
+
+  const fetchReport = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/reports/${id}`);
+      if (!res.ok) throw new Error('Report not found');
+      const data = await res.json();
+      setReport(data);
+
+      if (data.photo_url) {
+        const urlRes = await fetch(`${API_BASE}/storage/photo-url?key=${encodeURIComponent(data.photo_url)}`);
+        if (urlRes.ok) {
+          const { url } = await urlRes.json();
+          setPhotoUrl(url);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full bg-data-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-satellite-blue/20" />
+      </div>
+    );
+  }
+
+  if (!report) return <div className="p-10 text-center font-mono uppercase text-xs text-signal-coral">Report not found</div>;
+
+  const isVerified = report.trust_level !== 'evidence_void';
 
   return (
     <div className="h-full bg-data-white flex flex-col overflow-hidden">
@@ -49,14 +80,14 @@ export default function DetailView() {
       <div className="flex-1 overflow-y-auto">
         {/* Map Area */}
         <div className="h-64 relative bg-gray-200 border-b border-satellite-blue/10">
-          <MapContainer center={[report.coordinates.lat, report.coordinates.lng]} zoom={15} className="h-full w-full grayscale" zoomControl={false}>
+          <MapContainer center={[report.latitude, report.longitude]} zoom={15} className="h-full w-full grayscale" zoomControl={false}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-            <Marker position={[report.coordinates.lat, report.coordinates.lng]} />
+            <Marker position={[report.latitude, report.longitude]} />
           </MapContainer>
           <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-satellite-blue/10 shadow-lg flex items-center gap-2">
              <MapPin className="w-3.5 h-3.5 text-galileo-teal" />
              <span className="text-[10px] font-mono font-bold text-satellite-blue">
-                {report.coordinates.lat.toFixed(4)}, {report.coordinates.lng.toFixed(4)}
+                {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
              </span>
           </div>
         </div>
@@ -66,18 +97,22 @@ export default function DetailView() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="px-3 py-1.5 rounded-full bg-satellite-blue/5 text-satellite-blue text-[10px] font-mono font-bold uppercase tracking-widest italic border border-satellite-blue/10">
-                {report.category}
+                {report.pollution_type.replace('_', ' ')}
               </span>
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-mono text-satellite-blue/30 uppercase tracking-tighter">Reported on</span>
-                  <span className="text-[11px] font-bold text-satellite-blue">{report.date}</span>
-                </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-mono text-satellite-blue/30 uppercase tracking-tighter">Reported on</span>
+                <span className="text-[11px] font-bold text-satellite-blue">{new Date(report.submitted_at).toLocaleDateString()}</span>
               </div>
             </div>
 
-            <div className="aspect-video rounded-[2rem] overflow-hidden border border-satellite-blue/5 shadow-inner">
-               <img src={report.imageUrl} className="w-full h-full object-cover" alt="" />
+            <div className="aspect-video rounded-[2rem] overflow-hidden border border-satellite-blue/5 shadow-inner bg-data-white">
+               {photoUrl ? (
+                 <img src={photoUrl} className="w-full h-full object-cover" alt="" />
+               ) : (
+                 <div className="w-full h-full flex items-center justify-center">
+                    <Info className="w-8 h-8 text-satellite-blue/5" />
+                 </div>
+               )}
             </div>
             
             <div className="p-6 rounded-[2rem] bg-white border border-satellite-blue/5 space-y-4">
@@ -86,8 +121,14 @@ export default function DetailView() {
                 Report Analysis
               </h4>
               <p className="text-sm text-satellite-blue/70 leading-relaxed font-medium">
-                {report.description}
+                {report.description || "No description provided."}
               </p>
+              {report.ai_verdict && (
+                <div className="mt-4 p-4 rounded-xl bg-galileo-teal/5 border border-galileo-teal/10">
+                   <p className="text-[10px] font-mono text-galileo-teal/60 uppercase font-bold mb-1">AI Verdict</p>
+                   <p className="text-[11px] text-galileo-teal leading-tight">{report.ai_verdict}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -107,15 +148,15 @@ export default function DetailView() {
               </div>
 
               <div className="flex items-center gap-4 p-5 rounded-3xl bg-white border border-satellite-blue/5">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${report.status === 'Verified' ? 'bg-galileo-teal/10 text-galileo-teal' : 'bg-amber-50 text-amber-500'}`}>
-                  {report.status === 'Verified' ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isVerified ? 'bg-galileo-teal/10 text-galileo-teal' : 'bg-amber-50 text-amber-500'}`}>
+                  {isVerified ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-bold text-satellite-blue">Ground-Truth Audit</p>
                   <p className="text-[10px] text-satellite-blue/40">Manual review by command specialists.</p>
                 </div>
-                <div className={`text-[10px] font-mono font-bold uppercase ${report.status === 'Verified' ? 'text-green-500' : 'text-amber-500'}`}>
-                   {report.status === 'Verified' ? 'Approved' : 'Queued'}
+                <div className={`text-[10px] font-mono font-bold uppercase ${isVerified ? 'text-green-500' : 'text-amber-500'}`}>
+                   {isVerified ? 'Approved' : 'Queued'}
                 </div>
               </div>
             </div>
