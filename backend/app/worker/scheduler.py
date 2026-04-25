@@ -11,10 +11,12 @@ class AquaSyncScheduler:
         self._scheduler = AsyncIOScheduler()
 
     def start(self) -> None:
-        raise NotImplementedError
+        self._register_jobs()
+        self._scheduler.start()
 
     def shutdown(self) -> None:
         self._scheduler.shutdown(wait=False)
 
     def _register_jobs(self) -> None:
-        raise NotImplementedError
+        # Satellite ingestion job — wired up once SatellitePipelineTask is implemented
+        pass

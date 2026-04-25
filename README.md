@@ -15,12 +15,47 @@
 2. **Galileo Ground-Truth App:** A mobile interface allowing citizens to take photos of water bodies, automatically tagging them with hyper-precise GNSS coordinates and timestamps.
 3. **Data Fusion Engine:** A backend logic system that flags instances where citizen reports intersect with satellite anomalies, upgrading them to "High-Priority Alerts."
 
+## Tech Stack (Backend)
+
+| Layer | Tech |
+|---|---|
+| API | Python 3.12 · FastAPI · uvicorn |
+| Database | PostgreSQL 15 + PostGIS · GeoAlchemy2 · asyncpg |
+| Satellite pipeline | Sentinel Hub Processing API · UWQV evalscript · rasterio |
+| AI verification | Google Gemini 2.5 Flash |
+| Scheduling | APScheduler (daily 06:00) |
+| Task queue | PostgreSQL `FOR UPDATE SKIP LOCKED` |
+
 ## Getting Started
 
-1. Start the PostgreSQL + PostGIS database:
-   ```bash
-   docker-compose up -d
-   ```
-2. Navigate to `backend/` and install dependencies.
-3. Navigate to `frontend-admin/` and install dependencies.
-4. Navigate to `frontend-citizen/` and install dependencies.
+### Prerequisites
+- Docker + Docker Compose
+- Sentinel Hub account — [dataspace.copernicus.eu](https://dataspace.copernicus.eu)
+- Google Gemini API key
+
+### 1. Configure environment
+```bash
+cp backend/.env.example backend/.env
+# Fill in: SENTINEL_HUB_CLIENT_ID, SENTINEL_HUB_CLIENT_SECRET, GEMINI_API_KEY
+```
+
+### 2. Start services
+```bash
+docker-compose up --build
+```
+
+### 3. Run database migrations
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+### 4. Verify
+- API health: `http://localhost:8000/health`
+- Swagger UI: `http://localhost:8000/docs`
+
+---
+
+_Frontend setup:_
+
+1. Navigate to `frontend-admin/` and install dependencies.
+2. Navigate to `frontend-citizen/` and install dependencies.
