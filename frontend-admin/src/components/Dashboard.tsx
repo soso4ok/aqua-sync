@@ -12,9 +12,11 @@ import {
   ArrowUpRight,
   Droplets,
   Satellite,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react';
 import { CitizenReport, SatelliteAnomaly } from '../types';
+import { useSearch } from '../context/SearchContext';
 
 const MOCK_ANOMALIES: SatelliteAnomaly[] = [
   { id: 'an-1', lat: 54.44, lng: 18.57, radius: 800, type: 'Chlorophyll-a', intensity: 0.85, lastDetected: '2026-04-25T06:00:00Z' },
@@ -47,11 +49,27 @@ export default function Dashboard() {
   const [selectedReport, setSelectedReport] = useState<CitizenReport | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { searchQuery } = useSearch();
 
   const filteredReports = useMemo(() => {
-    if (filterCategory === 'All') return MOCK_REPORTS;
-    return MOCK_REPORTS.filter(r => r.category === filterCategory);
-  }, [filterCategory]);
+    let reports = MOCK_REPORTS;
+    
+    // Category filter
+    if (filterCategory !== 'All') {
+      reports = reports.filter(r => r.category === filterCategory);
+    }
+    
+    // Search query filter
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      reports = reports.filter(r => 
+        r.description.toLowerCase().includes(query) || 
+        r.category.toLowerCase().includes(query)
+      );
+    }
+    
+    return reports;
+  }, [filterCategory, searchQuery]);
 
   const stats = useMemo(() => {
     const activePins = MOCK_REPORTS.length;
@@ -236,18 +254,35 @@ export default function Dashboard() {
               })}
             >
               <Popup className="font-sans">
-                <div className="w-48 overflow-hidden rounded-lg">
+                <div className="w-52 overflow-hidden rounded-lg">
                   <img src={report.imageUrl} alt="Report View" className="w-full h-24 object-cover mb-2" />
                   <div className="p-1">
-                    <div className="flex items-center gap-1 mb-1">
-                       <CheckCircle2 className="w-3 h-3 text-galileo-teal" />
-                       <span className="text-[9px] font-mono text-galileo-teal uppercase">Verified Galileo Point</span>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase ${
+                        report.category === 'Algal Bloom' ? 'bg-green-100 text-green-700' :
+                        report.category === 'Oil Sheen' ? 'bg-purple-100 text-purple-700' :
+                        report.category === 'Trash' ? 'bg-orange-100 text-orange-700' :
+                        'bg-satellite-blue/5 text-satellite-blue/60'
+                      }`}>
+                        {report.category}
+                      </span>
+                      <div className="flex items-center gap-1">
+                         <CheckCircle2 className="w-3 h-3 text-galileo-teal" />
+                         <span className="text-[9px] font-mono text-galileo-teal uppercase">Galileo</span>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-satellite-blue">{report.category}</p>
-                    <p className="text-[11px] text-satellite-blue/70 mb-2">{report.description}</p>
-                    <button className="w-full bg-satellite-blue text-white text-[10px] py-1.5 rounded uppercase font-bold tracking-wider hover:bg-galileo-teal transition-colors">
-                       Analyze Indices
-                    </button>
+
+                    <p className="text-[11px] text-satellite-blue/70 mb-3">{report.description}</p>
+                    
+                    <div className="flex gap-2">
+                      <button className="flex-1 bg-satellite-blue text-white text-[9px] h-8 rounded uppercase font-bold tracking-wider hover:bg-galileo-teal transition-colors flex items-center justify-center">
+                         Validate Report
+                      </button>
+                      <button className="flex-1 bg-satellite-blue/5 text-satellite-blue/40 text-[9px] h-8 rounded uppercase font-bold tracking-wider hover:bg-red-600 hover:text-white transition-all group relative overflow-hidden flex items-center justify-center min-w-[85px]">
+                        <Trash2 className="w-3.5 h-3.5 group-hover:hidden" />
+                        <span className="hidden group-hover:inline whitespace-nowrap">Decline Report</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </Popup>
@@ -255,20 +290,7 @@ export default function Dashboard() {
           ))}
         </MapContainer>
 
-        {/* Map Overlays */}
-        <div className="absolute top-6 left-6 flex flex-col gap-3">
-           <div className="bg-white/90 backdrop-blur shadow-xl rounded-xl border border-satellite-blue/10 p-2 flex flex-col gap-1">
-              <button className="p-2.5 rounded-lg bg-satellite-blue text-white shadow-lg">
-                 <Layers className="w-5 h-5" />
-              </button>
-              <button className="p-2.5 rounded-lg hover:bg-data-white text-satellite-blue/60 transition-colors">
-                 <Droplets className="w-5 h-5" />
-              </button>
-              <button className="p-2.5 rounded-lg hover:bg-data-white text-satellite-blue/60 transition-colors">
-                 <Satellite className="w-5 h-5" />
-              </button>
-           </div>
-        </div>
+        {/* Map Overlays Removed */}
 
         {/* Info Panel Overlay */}
         {selectedReport && (
@@ -313,11 +335,12 @@ export default function Dashboard() {
                    </p>
                    
                    <div className="flex gap-2">
-                      <button className="flex-1 bg-satellite-blue text-white py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
-                         Valid Signage
+                      <button className="flex-2 bg-satellite-blue text-white h-12 rounded-xl text-xs font-bold uppercase tracking-widest hover:scale-[1.02] transition-transform flex items-center justify-center gap-2">
+                         Validate Report
                       </button>
-                      <button className="w-12 h-12 flex items-center justify-center border border-satellite-blue/10 rounded-xl hover:bg-data-white transition-colors">
-                         <Info className="w-5 h-5 text-satellite-blue" />
+                      <button className="flex-1 h-12 flex items-center justify-center border border-satellite-blue/10 rounded-xl hover:bg-red-600 hover:text-white transition-all group relative overflow-hidden">
+                         <Trash2 className="w-5 h-5 text-satellite-blue/40 group-hover:hidden" />
+                         <span className="hidden group-hover:inline text-[10px] font-bold uppercase tracking-widest">Decline Report</span>
                       </button>
                    </div>
                 </div>

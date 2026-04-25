@@ -141,19 +141,22 @@ export default function ReportForm() {
             </section>
          </div>
 
-         <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#F8FAFB] via-[#F8FAFB] to-transparent z-50">
+         <div className="mt-12 mb-8">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || selectedTags.length === 0}
-              className={`w-full h-16 rounded-2xl flex items-center justify-center font-bold tracking-widest uppercase transition-all shadow-xl shadow-satellite/20 ${isSubmitting || selectedTags.length === 0 ? 'bg-satellite/20 text-satellite/40 cursor-not-allowed' : 'bg-satellite text-white active:scale-95'}`}
+              disabled={isSubmitting || !photo}
+              className={`w-full h-16 rounded-2xl flex items-center justify-center gap-3 font-bold tracking-widest uppercase transition-all shadow-xl shadow-satellite/20 ${isSubmitting || !photo ? 'bg-satellite/20 text-satellite/40 cursor-not-allowed' : 'bg-satellite text-white active:scale-95'}`}
             >
               {isSubmitting ? (
-                <div className="flex items-center gap-3">
+                <>
                   <Loader2 size={24} className="animate-spin opacity-40" />
-                  <span>Syncing...</span>
-                </div>
+                  <span>SENDING...</span>
+                </>
               ) : (
-                "Finalize Sync"
+                <>
+                  <Send size={20} />
+                  <span>SEND REPORT</span>
+                </>
               )}
             </button>
          </div>

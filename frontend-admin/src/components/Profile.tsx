@@ -70,20 +70,6 @@ export default function Profile() {
                 </motion.div>
               ))}
            </div>
-
-           <div className="bg-satellite-blue rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 p-8">
-                 <Zap className="w-12 h-12 text-galileo-teal/20" />
-              </div>
-              <h4 className="text-2xl font-bold tracking-tight mb-4">Space-to-Citizen Certification</h4>
-              <p className="text-white/60 text-sm leading-relaxed mb-8 max-w-md">
-                 You have successfully validated over 400 reports against NDWI Sentinel-2 anomaly maps. 
-                 Your credentials are now boosted for high-priority emergency event handling.
-              </p>
-              <button className="bg-galileo-teal text-white px-8 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-white hover:text-satellite-blue transition-all">
-                 View Certifications
-              </button>
-           </div>
         </div>
       </div>
     </div>
