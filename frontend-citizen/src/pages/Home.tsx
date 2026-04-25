@@ -3,19 +3,43 @@ import { motion } from 'motion/react';
 import { Zap, Info, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+type GnssInfo = {
+  accuracy: number | null;
+  lat: number | null;
+  lng: number | null;
+  error: string | null;
+};
+
 export default function Home() {
-  const [accuracy, setAccuracy] = useState(15.4);
+  const [gnss, setGnss] = useState<GnssInfo>({ accuracy: null, lat: null, lng: null, error: null });
   const navigate = useNavigate();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAccuracy(prev => {
-        const next = Math.max(1.2, prev - (Math.random() * 2));
-        return parseFloat(next.toFixed(1));
-      });
-    }, 1500);
-    return () => clearInterval(interval);
+    if (!navigator.geolocation) {
+      setGnss(s => ({ ...s, error: 'Geolocation not supported' }));
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        console.log('[GNSS]', {
+          lat: latitude.toFixed(6),
+          lng: longitude.toFixed(6),
+          accuracy_m: accuracy.toFixed(1),
+          highAccuracy: accuracy < 5,
+          note: 'Constellation (GPS/Galileo/GLONASS) decided by OS/chip — not exposed by browser API',
+        });
+        setGnss({ accuracy: parseFloat(accuracy.toFixed(1)), lat: latitude, lng: longitude, error: null });
+      },
+      (err) => { console.warn('[GNSS] error:', err.message); setGnss(s => ({ ...s, error: err.message })); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  const { accuracy, lat, lng } = gnss;
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFB]">
@@ -93,37 +117,64 @@ export default function Home() {
            </div>
         </div>
 
-        {/* Accuracy Tracker */}
-        <div className="card-smooth p-6">
-           <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-satellite">Verification Precision</h3>
-              <span className={`text-xs font-mono font-bold ${accuracy < 5 ? 'text-green-500' : 'text-signal'}`}>
-                {accuracy < 5 ? 'STABLE' : 'CALIBRATING'}
-              </span>
-           </div>
-           
-           <div className="flex items-center gap-6">
-              <div className="relative">
-                 <div className="w-16 h-16 rounded-2xl border-2 border-galileo/20 flex items-center justify-center animate-pulse">
-                    <div className="w-8 h-8 rounded-full border border-galileo/40" />
-                 </div>
-                 <div className="absolute inset-0 flex items-center justify-center font-mono text-sm font-bold text-galileo">
-                   {accuracy}m
-                 </div>
+        {/* GNSS Debug Panel */}
+        <div className="card-smooth p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-satellite">Verification Precision</h3>
+            <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg ${
+              accuracy === null ? 'bg-satellite/10 text-satellite/40' :
+              accuracy < 5 ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+            }`}>
+              {accuracy === null ? 'ACQUIRING' : accuracy < 5 ? 'LOCK VERIFIED' : 'CALIBRATING'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center ${accuracy === null ? 'border-satellite/10 animate-pulse' : accuracy < 5 ? 'border-green-400/40' : 'border-galileo/20'}`}>
+                <div className="w-8 h-8 rounded-full border border-current opacity-40" />
               </div>
-              <div className="flex-grow">
-                 <div className="flex justify-between text-[10px] font-bold text-satellite/40 mb-2 uppercase">
-                   <span>GNSS Signal Strength</span>
-                   <span>92%</span>
-                 </div>
-                 <div className="w-full h-1.5 bg-data rounded-full overflow-hidden">
-                    <motion.div 
-                      animate={{ width: `${Math.min(100, (1/accuracy)*500)}%` }}
-                      className={`h-full ${accuracy < 5 ? 'bg-green-400' : 'bg-signal'}`}
-                    />
-                 </div>
+              <div className="absolute inset-0 flex items-center justify-center font-mono text-sm font-bold text-galileo">
+                {accuracy !== null ? `${accuracy}m` : '—'}
               </div>
-           </div>
+            </div>
+            <div className="grow">
+              <div className="flex justify-between text-[10px] font-bold text-satellite/40 mb-2 uppercase">
+                <span>GNSS Signal</span>
+                <span>{accuracy !== null ? `${Math.round(Math.min(100, (1 / accuracy) * 500))}%` : '—'}</span>
+              </div>
+              <div className="w-full h-1.5 bg-data rounded-full overflow-hidden">
+                <motion.div
+                  animate={{ width: accuracy !== null ? `${Math.min(100, (1 / accuracy) * 500)}%` : '0%' }}
+                  className={`h-full transition-colors ${accuracy !== null && accuracy < 5 ? 'bg-green-400' : 'bg-signal'}`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Coordinates row */}
+          <div className="bg-satellite/5 rounded-2xl px-4 py-3 font-mono text-[11px] space-y-1">
+            <div className="flex justify-between">
+              <span className="text-satellite/40 uppercase tracking-widest">Lat</span>
+              <span className="text-satellite font-bold">{lat !== null ? lat.toFixed(6) + '°' : '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-satellite/40 uppercase tracking-widest">Lng</span>
+              <span className="text-satellite font-bold">{lng !== null ? lng.toFixed(6) + '°' : '—'}</span>
+            </div>
+            <div className="flex justify-between pt-1 border-t border-satellite/10">
+              <span className="text-satellite/40 uppercase tracking-widest">Constellation</span>
+              <span className="text-satellite/60">GPS / Galileo / GLONASS</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-satellite/40 uppercase tracking-widest">Selection</span>
+              <span className="text-satellite/60">OS / chip (not exposed)</span>
+            </div>
+          </div>
+
+          {gnss.error && (
+            <p className="text-[11px] text-red-500 font-mono">{gnss.error}</p>
+          )}
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ export default function ReportForm() {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,22 +36,38 @@ export default function ReportForm() {
   };
 
   const handleSubmit = async () => {
+    if (!coords) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/reports', {
+      const form = new FormData();
+      form.append('latitude', String(coords.lat));
+      form.append('longitude', String(coords.lng));
+      form.append('gnss_accuracy_m', String(coords.accuracy));
+      form.append('tags', selectedTags.join(','));
+      form.append('captured_at', new Date().toISOString());
+      if (comment) form.append('description', comment);
+
+      // Attach photo blob if captured from canvas (data URL → blob)
+      if (photo?.startsWith('data:')) {
+        const res = await fetch(photo);
+        const blob = await res.blob();
+        form.append('photo', blob, 'photo.jpg');
+      }
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/v1/reports/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          photo,
-          coords,
-          tags: selectedTags,
-          comment,
-          timestamp: new Date().toISOString()
-        })
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
       });
 
       if (!response.ok) throw new Error('Submission failed');
-      
+
+      const data = await response.json();
+      setPointsAwarded(data.points_awarded ?? 0);
+
+      localStorage.removeItem('temp_photo');
+      localStorage.removeItem('temp_coords');
       setIsSubmitting(false);
       setIsDone(true);
     } catch (error) {
@@ -71,7 +88,7 @@ export default function ReportForm() {
         </motion.div>
         <h1 className="text-3xl font-bold mb-4 tracking-tight">Sync Complete</h1>
         <p className="text-satellite/60 mb-10 max-w-xs mx-auto">
-          Your data has been broadcast to the Sentinel network. 120 impact points rewarded.
+          Your data has been broadcast to the Sentinel network.{pointsAwarded > 0 ? ` +${pointsAwarded} impact points rewarded.` : ''}
         </p>
         <button 
           onClick={() => navigate('/history')}
