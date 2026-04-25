@@ -28,7 +28,9 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://localhost:4173",
+        "https://fastapi-app-154466642830.europe-central2.run.app",
     ]
 
     GEMINI_API_KEY: str = ""
