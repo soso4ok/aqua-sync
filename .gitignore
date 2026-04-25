@@ -22,3 +22,28 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Rasterio / GDAL temp files
+*.tif
+*.tiff
+*.geojson
+
+# Sentinel data output
+backend/data/
+
+# Alembic
+backend/alembic/versions/*.pyc
