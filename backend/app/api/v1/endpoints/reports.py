@@ -178,8 +178,11 @@ async def submit_report(
             )
         except HTTPException:
             raise
-        except Exception:
-            gemini_pollution_type = None  # Gemini unavailable — continue without AI
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Photo verification failed. Submit without a photo or try again. ({type(e).__name__})",
+            )
     else:
         gemini_pollution_type = None
 

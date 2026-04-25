@@ -66,24 +66,8 @@ export default function ConfirmationView() {
     setIsSubmitting(true);
 
     try {
-      // 1. Get Presigned URL
-      const storageUrl = getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg');
-      console.log('📡 Fetching presigned URL from:', storageUrl);
-      const storageRes = await fetch(storageUrl);
-      if (!storageRes.ok) throw new Error('Failed to get upload URL');
-      const { upload_url, key } = await storageRes.json();
-
-      // 2. Upload Image to Choice
-      console.log('☁️ Uploading blob to R2 via presigned URL...');
       const blob = await (await fetch(imgSrc)).blob();
-      const uploadRes = await fetch(upload_url, {
-        method: 'PUT',
-        body: blob,
-        headers: { 'Content-Type': 'image/jpeg' }
-      });
-      if (!uploadRes.ok) throw new Error('Failed to upload image');
 
-      // 3. Create Report in Backend
       const formData = new FormData();
       formData.append('latitude', coords.lat.toString());
       formData.append('longitude', coords.lng.toString());
@@ -91,29 +75,28 @@ export default function ConfirmationView() {
       formData.append('description', description);
       formData.append('tags', selectedTags.join(','));
       formData.append('captured_at', currentTime);
-      formData.append('photo_key', key);
+      formData.append('photo', blob, 'photo.jpg');
 
-      const reportUrl = getApiUrl('/api/v1/reports/');
-      console.log('🚀 Submitting final report to:', reportUrl);
-      const reportRes = await fetch(reportUrl, {
+      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
         method: 'POST',
         body: formData,
       });
 
-      if (!reportRes.ok) throw new Error('Failed to create report');
+      const data = await reportRes.json();
 
-      const newReport = await reportRes.json();
+      if (!reportRes.ok) {
+        alert(data.detail || 'Failed to submit report.');
+        return;
+      }
 
-      // Save ID to local storage for "My History" tracking without auth
       const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
-      myReports.push(newReport.id);
+      myReports.push(data.id);
       localStorage.setItem('my_reports', JSON.stringify(myReports));
 
-      console.log('Report created successfully');
-      navigate('/profile'); // Redirect to profile to see history
+      navigate('/profile');
     } catch (error) {
       console.error('Submission error:', error);
-      alert('Failed to submit report. Please try again.');
+      alert('Network error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
