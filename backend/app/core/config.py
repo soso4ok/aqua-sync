@@ -1,19 +1,22 @@
-import os
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "AquaSync"
+    DB_HOST: str
+    DB_PORT: int = 5432
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_NAME: str
+    DB_SSL: bool = False
+    PORT: int = 3000
 
-    POSTGRES_USER: str = os.getenv("DB_USER", "postgres")
-    POSTGRES_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
-    POSTGRES_SERVER: str = os.getenv("DB_HOST", "localhost")
-    POSTGRES_PORT: str = os.getenv("DB_PORT", "5432")
-    POSTGRES_DB: str = os.getenv("DB_NAME", "postgres")
-    DATABASE_URL: str = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    if os.getenv("DB_SSL") == "true":
-        DATABASE_URL += "?ssl=require"
+    SENTINEL_HUB_CLIENT_ID: str
+    SENTINEL_HUB_CLIENT_SECRET: str
+
+    SENTINEL_HUB_TOKEN_URL: str = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    SENTINEL_HUB_PROCESS_URL: str = "https://sh.dataspace.copernicus.eu/process/v1"
+    SENTINEL_HUB_STATS_URL: str = "https://sh.dataspace.copernicus.eu/statistics/v1"
+    SENTINEL_HUB_CATALOG_URL: str = "https://sh.dataspace.copernicus.eu/catalog/v1"
 
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
@@ -28,20 +31,32 @@ class Settings(BaseSettings):
         "http://localhost:3001",
         "http://localhost:4173",
         "https://fastapi-app-154466642830.europe-central2.run.app",
-        "https://aqua-sync-kohl.vercel.app",
     ]
 
     GEMINI_API_KEY: str = ""
 
-    # Cloudflare R2 / S3 Storage
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
-    R2_ENDPOINT_URL: str | None = None  # Will be built from ACCOUNT_ID if not provided
+
+    @property
+    def r2_endpoint_url(self) -> str:
+        return f"https://{self.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
     class Config:
-        case_sensitive = True
+        env_file = ".env"
+        extra = "ignore"
+
+    @property
+    def database_url(self) -> str:
+        base = (
+            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
+        if self.DB_SSL:
+            return f"{base}?ssl=require"
+        return base
 
 
 settings = Settings()
