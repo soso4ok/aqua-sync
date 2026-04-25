@@ -1,0 +1,57 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+env:
+  PROJECT_ID: aquasync-494411
+  REGION: europe-central2
+  SERVICE_NAME: fastapi-app
+  REPOSITORY: fastapi-repo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Authorize Docker
+      run: |
+        gcloud auth configure-docker europe-central2-docker.pkg.dev
+
+    - name: Build and Push Container
+      run: |
+        docker build -t europe-central2-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} ./backend
+        docker push europe-central2-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+    - name: Deploy to Cloud Run
+      uses: google-github-actions/deploy-cloudrun@v2
+      with:
+        service: ${{ env.SERVICE_NAME }}
+        region: ${{ env.REGION }}
+        image: europe-central2-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        # Передаємо змінні оточення (додайте всі необхідні)
+        env_vars: |
+          DB_HOST=ep-morning-morning-amt331y8-pooler.c-5.us-east-1.aws.neon.tech
+          DB_USER=neondb_owner
+          DB_NAME=neondb
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_SSL=true
+          SENTINEL_HUB_CLIENT_ID=${{ secrets.SH_CLIENT_ID }}
+          SENTINEL_HUB_CLIENT_SECRET=${{ secrets.SH_CLIENT_SECRET }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
