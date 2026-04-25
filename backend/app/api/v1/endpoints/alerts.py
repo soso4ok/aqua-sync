@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin, get_db
 from app.models.alert import Alert, AlertStatus
+from app.models.user import User
 from app.schemas.alert import AlertRead, AlertUpdate
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -15,12 +16,14 @@ router = APIRouter(prefix="/alerts", tags=["alerts"])
 async def list_alerts(
     skip: int = 0,
     limit: int = 50,
+    status: AlertStatus | None = None,
     session: AsyncSession = Depends(get_db),
 ):
-    """Повертає список алертів для Admin Dashboard (найновіші спочатку)."""
-    rows = await session.scalars(
-        select(Alert).order_by(Alert.created_at.desc()).offset(skip).limit(limit)
-    )
+    q = select(Alert)
+    if status:
+        q = q.where(Alert.status == status)
+    q = q.order_by(Alert.created_at.desc()).offset(skip).limit(limit)
+    rows = await session.scalars(q)
     return list(rows.all())
 
 
@@ -29,6 +32,7 @@ async def update_alert(
     alert_id: int,
     body: AlertUpdate,
     session: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_admin),
 ):
     """Оновити статус або нотатки алерту. При переході в RESOLVED — проставляє resolved_at."""
     alert = await session.get(Alert, alert_id)

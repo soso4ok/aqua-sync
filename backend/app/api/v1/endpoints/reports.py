@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.api.dependencies import get_db, get_current_user, get_current_user_optional
 from app.core.config import settings
@@ -17,6 +20,7 @@ from app.services.storage.r2 import upload_report_photo
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 _gnss = GNSSValidator()
+_limiter = Limiter(key_func=get_remote_address)
 _verifier: GeminiPhotoVerifier | None = (
     GeminiPhotoVerifier(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
 )
@@ -83,7 +87,9 @@ def _calc_points(trust_level: TrustLevel, is_high_accuracy: bool) -> int:
 
 
 @router.post("/", response_model=ReportRead, status_code=201)
+@_limiter.limit("10/minute")
 async def submit_report(
+    request: Request,
     latitude: float = Form(...),
     longitude: float = Form(...),
     gnss_accuracy_m: float = Form(...),
@@ -91,6 +97,7 @@ async def submit_report(
     tags: str = Form(default=""),  # comma-separated tag ids from PWA
     captured_at: str | None = Form(None),
     photo: UploadFile | None = File(None),
+    photo_key: str | None = Form(None),
     session: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -154,10 +161,10 @@ async def submit_report(
         gemini_pollution_type = None
 
     # --- Завантаження фото в R2 ---
-    photo_key: str | None = None
-    if photo_bytes:
+    final_photo_key: str | None = photo_key
+    if photo_bytes and not final_photo_key:
         try:
-            photo_key = upload_report_photo(photo_bytes, photo_mime)
+            final_photo_key = upload_report_photo(photo_bytes, photo_mime)
         except Exception:
             pass  # R2 не налаштований — продовжуємо без фото
 
@@ -170,7 +177,7 @@ async def submit_report(
         location=point,
         gnss_accuracy_m=gnss_accuracy_m,
         description=description,
-        photo_url=photo_key,
+        photo_url=final_photo_key,
         pollution_type=gemini_pollution_type or _tags_to_pollution_type(tag_list),
         trust_level=trust_level,
         ai_verdict=ai_verdict,
@@ -202,19 +209,7 @@ async def submit_report(
     except Exception:
         pass
 
-    return ReportRead(
-        id=report.id,
-        latitude=latitude,
-        longitude=longitude,
-        gnss_accuracy_m=gnss_accuracy_m,
-        is_high_accuracy=is_high_accuracy,
-        description=report.description,
-        pollution_type=report.pollution_type,
-        trust_level=report.trust_level,
-        ai_verdict=report.ai_verdict,
-        submitted_at=report.submitted_at,
-        points_awarded=points_awarded,
-    )
+    return _to_read(report, points_awarded=points_awarded)
 
 
 @router.get("/my", response_model=list[ReportRead])
@@ -238,11 +233,27 @@ async def my_reports(
 async def list_reports(
     skip: int = 0,
     limit: int = 50,
+    intersected_only: bool = False,
+    from_dt: datetime | None = None,
+    to_dt: datetime | None = None,
+    pollution_type: PollutionType | None = None,
+    trust_level: TrustLevel | None = None,
     session: AsyncSession = Depends(get_db),
 ):
-    rows = await session.scalars(
-        select(CitizenReport).order_by(CitizenReport.submitted_at.desc()).offset(skip).limit(limit)
-    )
+    from app.models.alert import Alert
+    q = select(CitizenReport)
+    if intersected_only:
+        q = q.join(Alert, Alert.report_id == CitizenReport.id)
+    if from_dt:
+        q = q.where(CitizenReport.submitted_at >= from_dt)
+    if to_dt:
+        q = q.where(CitizenReport.submitted_at <= to_dt)
+    if pollution_type:
+        q = q.where(CitizenReport.pollution_type == pollution_type)
+    if trust_level:
+        q = q.where(CitizenReport.trust_level == trust_level)
+    q = q.order_by(CitizenReport.submitted_at.desc()).offset(skip).limit(limit)
+    rows = await session.scalars(q)
     return [_to_read(r) for r in rows]
 
 

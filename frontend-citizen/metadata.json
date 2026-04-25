@@ -1,6 +1,6 @@
 {
-  "name": "AquaSync",
-  "description": "A PWA bridge between citizens and satellite data for real-time water monitoring. Connects local observers with space intelligence to protect our water resources.",
+  "name": "AquaSnap",
+  "description": "A citizen science mobile app for water quality reporting. Capture photos, earn points, and contribute to environmental monitoring.",
   "requestFramePermissions": ["camera", "geolocation"],
-  "majorCapabilities": ["PWA", "Real-time Monitoring", "Satellite Integration"]
+  "majorCapabilities": ["Real-time Photo Capture", "Point-based Gamification", "Citizen Science Rewards"]
 }

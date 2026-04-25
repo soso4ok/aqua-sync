@@ -37,5 +37,8 @@ httpx==0.27.2
 # Object storage (Cloudflare R2 via S3-compatible API)
 boto3==1.35.36
 
+# Rate limiting
+slowapi==0.1.9
+
 # Image processing
 Pillow>=10.0.0
