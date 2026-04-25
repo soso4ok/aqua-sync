@@ -12,6 +12,7 @@ from app.models.report import PollutionType
 class VerificationStatus(str, Enum):
     VERIFIED = "VERIFIED"
     LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    NOT_POLLUTION = "NOT_POLLUTION"
     FRAUD_SUSPECTED = "FRAUD_SUSPECTED"
 
 
@@ -95,7 +96,9 @@ Classification rules:
         # Determine verification status
         if is_fraud:
             status = VerificationStatus.FRAUD_SUSPECTED
-        elif is_pollution and confidence >= 0.6:
+        elif not is_pollution:
+            status = VerificationStatus.NOT_POLLUTION
+        elif confidence >= 0.6:
             status = VerificationStatus.VERIFIED
         else:
             status = VerificationStatus.LOW_CONFIDENCE
