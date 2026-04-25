@@ -4,14 +4,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShopItem } from '../types';
 import { useNavigate } from 'react-router-dom';
 
+import explorerCapImg from '../../assets/shop-items/Gemini_Generated_Image_ajfmp8ajfmp8ajfm.png';
+import waterBottleImg from '../../assets/shop-items/blue-glass-water-bottle-800-ml--568.jpg';
+
 const MOCK_ITEMS: ShopItem[] = [
-  { id: '1', name: 'Premium Data access', price: 500, category: 'Digital', imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=200' },
-  { id: '2', name: 'Ocean Protect Tee', price: 1200, category: 'Merch', imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=200' },
-  { id: '3', name: 'Priority Validation', price: 300, category: 'Perks', imageUrl: 'https://images.unsplash.com/photo-1518112391131-993d691f11cb?auto=format&fit=crop&q=80&w=200' },
-  { id: '4', name: 'Water Filter Pack', price: 2000, category: 'Gear', imageUrl: 'https://images.unsplash.com/photo-1617468165799-aabc7f26715b?auto=format&fit=crop&q=80&w=200' },
+  { id: '1', name: 'Explorer Cap', price: 600, category: 'Apparel', imageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&q=80&w=400' },
+  { id: '2', name: 'Citizen Sensor Tee', price: 1200, category: 'Apparel', imageUrl: explorerCapImg },
+  { id: '3', name: 'Steel Water Bottle', price: 1500, category: 'Gear', imageUrl: waterBottleImg },
+  { id: '4', name: 'Eco Field Bag', price: 2200, category: 'Gear', imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=400' },
 ];
 
-const CATEGORIES = ['All', 'Digital', 'Merch', 'Perks', 'Gear'];
+const CATEGORIES = ['All', 'Apparel', 'Gear'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
