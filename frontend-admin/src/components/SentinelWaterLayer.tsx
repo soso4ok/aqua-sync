@@ -175,6 +175,11 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
     const prevBlobUrl = useRef<string | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Log when dateFrom/dateTo props change
+    useEffect(() => {
+        console.log('SentinelWaterLayer props updated:', { dateFrom, dateTo, enabled });
+    }, [dateFrom, dateTo, enabled]);
+
     const loadOverlay = useCallback(async () => {
         if (!enabled) return;
 
@@ -215,7 +220,15 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
             // Default to last 60 days if not specified
             const to = dateTo || new Date().toISOString();
             const fromDate = dateFrom || (() => { const d = new Date(); d.setDate(d.getDate() - 60); return d.toISOString(); })();
+
+            console.log('🛰️ SentinelWaterLayer fetching:', {
+                from: new Date(fromDate).toLocaleDateString(),
+                to: new Date(to).toLocaleDateString(),
+                zoom,
+                bbox
+            });
             const blobUrl = await fetchWaterQualityImage(bbox, width, height, fromDate, to, controller.signal);
+            console.log('✅ Satellite data loaded successfully');
 
             if (controller.signal.aborted) {
                 URL.revokeObjectURL(blobUrl);
@@ -289,9 +302,9 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
         <>
             {/* Loading indicator */}
             {loading && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-6 py-3 flex items-center gap-3 border border-galileo-teal/30">
-                    <div className="w-4 h-4 border-2 border-galileo-teal border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-mono text-satellite-blue/70">Loading satellite data…</span>
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-gradient-to-r from-indigo-600 to-violet-600 text-white backdrop-blur shadow-2xl rounded-2xl px-6 py-3 flex items-center gap-3 border border-white/20 animate-pulse">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-bold tracking-wide">LOADING SENTINEL-2 DATA…</span>
                 </div>
             )}
             {/* Error / zoom hint */}
