@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
-          target: 'http://localhost:8000',
+          target: env.VITE_APP_ENV === 'prod'
+            ? env.VITE_API_URL_REMOTE
+            : env.VITE_API_URL_LOCAL,
           changeOrigin: true,
         },
         '/sh-token': {
