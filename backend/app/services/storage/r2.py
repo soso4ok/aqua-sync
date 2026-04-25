@@ -31,12 +31,30 @@ def upload_report_photo(data: bytes, content_type: str = "image/jpeg") -> str:
 
 
 def get_photo_url(key: str, expires_in: int = 3600) -> str:
-    """Return a pre-signed URL valid for `expires_in` seconds."""
+    """Return a pre-signed URL valid for viewing `expires_in` seconds."""
     return _get_client().generate_presigned_url(
         "get_object",
         Params={"Bucket": settings.R2_BUCKET_NAME, "Key": key},
         ExpiresIn=expires_in,
     )
+
+
+def generate_upload_url(content_type: str = "image/jpeg", expires_in: int = 600) -> dict:
+    """
+    Return a pre-signed URL for direct upload from frontend via PUT.
+    Returns: { "url": "...", "key": "..." }
+    """
+    key = f"reports/{uuid.uuid4().hex}.jpg"
+    url = _get_client().generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": settings.R2_BUCKET_NAME,
+            "Key": key,
+            "ContentType": content_type,
+        },
+        ExpiresIn=expires_in,
+    )
+    return {"upload_url": url, "key": key}
 
 
 def check_connection() -> dict:
