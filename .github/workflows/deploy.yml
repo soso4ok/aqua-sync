@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'backend/**'
+    pull_request:
+      branches:
+        - main
 
 env:
   PROJECT_ID: aquasync-494411
