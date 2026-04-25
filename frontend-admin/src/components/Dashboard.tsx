@@ -11,7 +11,8 @@ import {
   Filter,
   ArrowUpRight,
   Droplets,
-  Satellite
+  Satellite,
+  Zap
 } from 'lucide-react';
 import { CitizenReport, SatelliteAnomaly } from '../types';
 
@@ -44,13 +45,22 @@ const MOCK_REPORTS: CitizenReport[] = [
 
 export default function Dashboard() {
   const [selectedReport, setSelectedReport] = useState<CitizenReport | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const filteredReports = useMemo(() => {
+    if (filterCategory === 'All') return MOCK_REPORTS;
+    return MOCK_REPORTS.filter(r => r.category === filterCategory);
+  }, [filterCategory]);
 
   const stats = useMemo(() => {
-    const totalReports = MOCK_REPORTS.length;
-    const verified = MOCK_REPORTS.filter(r => r.isVerified).length;
+    const activePins = MOCK_REPORTS.length;
+    const suspectedZones = MOCK_ANOMALIES.length;
     const intersections = MOCK_REPORTS.filter(r => r.anomalyIntersect).length;
-    return { totalReports, verified, intersections };
+    return { activePins, suspectedZones, intersections };
   }, []);
+
+  const categories = ['All', 'Algal Bloom', 'Trash', 'Discoloration', 'Oil Sheen'];
 
   return (
     <div className="flex h-full">
@@ -59,31 +69,71 @@ export default function Dashboard() {
         <div className="p-6 border-b border-satellite-blue/5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">Incoming Signals</h2>
-            <button className="p-2 hover:bg-data-white rounded-lg transition-colors text-satellite-blue/40">
-              <Filter className="w-4 h-4" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={`p-2 rounded-lg transition-all text-satellite-blue/40 flex items-center gap-2 ${isFilterOpen ? 'bg-data-white ring-1 ring-satellite-blue/10 shadow-sm' : 'hover:bg-data-white'}`}
+              >
+                <Filter className={`w-4 h-4 ${isFilterOpen ? 'text-galileo-teal' : ''}`} />
+                <span className="text-[10px] font-mono uppercase tracking-wider">{filterCategory}</span>
+              </button>
+              
+              {isFilterOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsFilterOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-satellite-blue/10 rounded-xl shadow-2xl z-50 py-2">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          setFilterCategory(cat);
+                          setIsFilterOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-xs hover:bg-data-white transition-colors flex items-center justify-between ${filterCategory === cat ? 'text-galileo-teal font-bold bg-galileo-teal/5' : 'text-satellite-blue/60'}`}
+                      >
+                        {cat}
+                        {filterCategory === cat && <div className="w-1.5 h-1.5 rounded-full bg-galileo-teal"></div>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-3">
              <div className="bg-satellite-blue text-white p-3 rounded-xl">
-                <p className="text-[10px] uppercase font-mono opacity-60">Verified Reports</p>
+                <p className="text-[10px] uppercase font-mono opacity-60">Active Pins</p>
                 <div className="flex items-end justify-between mt-1">
-                   <span className="text-2xl font-bold">{stats.verified}</span>
-                   <span className="text-[10px] font-mono text-galileo-teal">GALILEO</span>
+                   <span className="text-2xl font-bold">{stats.activePins}</span>
+                   <span className="text-[10px] font-mono text-galileo-teal uppercase">Galileo</span>
                 </div>
              </div>
              <div className="bg-signal-coral text-white p-3 rounded-xl">
-                <p className="text-[10px] uppercase font-mono opacity-80">Anomaly Hits</p>
+                <p className="text-[10px] uppercase font-mono opacity-80">Suspected Zones</p>
                 <div className="flex items-end justify-between mt-1">
-                   <span className="text-2xl font-bold">{stats.intersections}</span>
-                   <span className="text-[10px] font-mono text-white/50">COPERNICUS</span>
+                   <span className="text-2xl font-bold">{stats.suspectedZones}</span>
+                   <span className="text-[10px] font-mono text-white/50 uppercase">Sentinel</span>
+                </div>
+             </div>
+             <div className="bg-galileo-teal text-white p-3 rounded-xl col-span-2 border border-white/20 shadow-lg">
+                <p className="text-[10px] uppercase font-mono opacity-90 font-bold">Space-to-Citizen Fusion Hits</p>
+                <div className="flex items-end justify-between mt-1">
+                   <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-white animate-pulse" />
+                      <span className="text-2xl font-bold">{stats.intersections}</span>
+                   </div>
+                   <span className="text-[10px] font-mono text-white/60 lowercase italic">High Priority Verified</span>
                 </div>
              </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {MOCK_REPORTS.map((report) => (
+          {filteredReports.map((report) => (
             <button
               key={report.id}
               onClick={() => setSelectedReport(report)}
@@ -97,6 +147,7 @@ export default function Dashboard() {
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase ${
                   report.category === 'Algal Bloom' ? 'bg-green-100 text-green-700' :
                   report.category === 'Oil Sheen' ? 'bg-purple-100 text-purple-700' :
+                  report.category === 'Trash' ? 'bg-orange-100 text-orange-700' :
                   'bg-satellite-blue/5 text-satellite-blue/60'
                 }`}>
                   {report.category}
@@ -122,6 +173,11 @@ export default function Dashboard() {
               </div>
             </button>
           ))}
+          {filteredReports.length === 0 && (
+            <div className="py-12 text-center">
+              <p className="text-sm text-satellite-blue/40 font-mono italic">No signals found in this category.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -167,8 +223,8 @@ export default function Dashboard() {
             </Circle>
           ))}
 
-          {/* Citizen Reports */}
-          {MOCK_REPORTS.map((report) => (
+          {/* Citizen Reports - Also filtered for consistency */}
+          {filteredReports.map((report) => (
             <Marker 
               key={report.id} 
               position={[report.lat, report.lng]}

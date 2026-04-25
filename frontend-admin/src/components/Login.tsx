@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Waves, Zap, Globe, ShieldCheck, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -10,7 +10,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onLogin();
   };
