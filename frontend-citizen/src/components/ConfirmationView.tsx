@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Clock, Tag, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getApiUrl } from '../apiConfig';
+import NotificationPopup from './NotificationPopup';
 
 export default function ConfirmationView() {
   const navigate = useNavigate();
@@ -14,6 +15,15 @@ export default function ConfirmationView() {
   const [address, setAddress] = useState('Fetching location...');
   const [coords, setCoords] = useState<{ lat: number, lng: number, accuracy: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState<{ message: string, type: 'error' | 'success', isVisible: boolean }>({
+    message: '',
+    type: 'error',
+    isVisible: false
+  });
+
+  const showError = (message: string) => {
+    setNotification({ message, type: 'error', isVisible: true });
+  };
 
   useEffect(() => {
     if (!imgSrc) {
@@ -94,11 +104,26 @@ export default function ConfirmationView() {
       localStorage.setItem('my_reports', JSON.stringify(myReports));
 
       navigate('/profile');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submission error:', error);
-      alert('Network error. Please try again.');
+      showError(error.message || 'Failed to submit report. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const parseError = async (res: Response) => {
+    try {
+      const errorData = await res.json();
+      if (errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          return errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join(' | ');
+        }
+        return typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+      }
+      return 'Server error occurred';
+    } catch {
+      return `Connection error (${res.status})`;
     }
   };
 
@@ -202,6 +227,13 @@ export default function ConfirmationView() {
           <p className="text-center text-[10px] text-signal-coral mt-2 font-mono">Waiting for GPS fix...</p>
         )}
       </div>
+
+      <NotificationPopup
+        isVisible={notification.isVisible}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isVisible: false }))}
+      />
     </div>
   );
 }

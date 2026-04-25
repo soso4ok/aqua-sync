@@ -6,15 +6,13 @@ const videoConstraints = {
   facingMode: "environment"
 };
 
-// A nice placeholder for testing without a real camera
-const MOCK_IMAGE = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=800";
 
 export default function CameraView() {
   const webcamRef = useRef<Webcam>(null);
   const navigate = useNavigate();
 
-  const capture = useCallback((mockImg?: string) => {
-    const imageSrc = mockImg || webcamRef.current?.getScreenshot();
+  const capture = useCallback(() => {
+    const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
       console.log("📸 Photo captured, navigating to confirmation...");
       navigate('/confirm', { state: { imgSrc: imageSrc } });
@@ -51,13 +49,6 @@ export default function CameraView() {
         <div className="px-4 py-2 rounded-full border border-white/10 flex items-center gap-2 bg-black/20 backdrop-blur-sm">
           <span className="text-white text-[10px] uppercase font-mono tracking-widest opacity-60">Capture Mode</span>
         </div>
-        {/* Mock button for easy testing */}
-        <button
-          onClick={() => capture(MOCK_IMAGE)}
-          className="px-4 py-2 rounded-full border border-teal-400/30 text-teal-400 text-[10px] uppercase font-mono tracking-widest bg-teal-900/40 backdrop-blur-sm hover:bg-teal-400 hover:text-white transition-colors"
-        >
-          [ MOCK SHOT ]
-        </button>
       </div>
 
       {/* Manual Take Photo Button (Above Navbar) */}
