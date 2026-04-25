@@ -27,12 +27,15 @@ async def get_current_user(
     try:
         payload = _security.decode_token(token)
         user_id = int(payload["sub"])
+        token_ver = int(payload.get("ver", 0))
     except (ValueError, KeyError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     user = await session.scalar(select(User).where(User.id == user_id))
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user.token_version != token_ver:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
     return user
 
 
@@ -46,7 +49,11 @@ async def get_current_user_optional(
     try:
         payload = _security.decode_token(token)
         user_id = int(payload["sub"])
-        return await session.scalar(select(User).where(User.id == user_id, User.is_active == True))
+        token_ver = int(payload.get("ver", 0))
+        user = await session.scalar(select(User).where(User.id == user_id, User.is_active == True))
+        if user and user.token_version == token_ver:
+            return user
+        return None
     except Exception:
         return None
 

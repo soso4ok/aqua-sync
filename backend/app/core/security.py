@@ -16,20 +16,20 @@ class SecurityService:
     def verify_password(self, plain: str, hashed: str) -> bool:
         return pwd_context.verify(plain, hashed)
 
-    def create_access_token(self, subject: str, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(self, subject: str, token_version: int = 0, expires_delta: Optional[timedelta] = None) -> str:
         expire = datetime.now(timezone.utc) + (
             expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
         )
         return jwt.encode(
-            {"sub": subject, "exp": expire, "type": "access"},
+            {"sub": subject, "exp": expire, "type": "access", "ver": token_version},
             settings.JWT_SECRET_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
 
-    def create_refresh_token(self, subject: str) -> str:
+    def create_refresh_token(self, subject: str, token_version: int = 0) -> str:
         expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS)
         return jwt.encode(
-            {"sub": subject, "exp": expire, "type": "refresh"},
+            {"sub": subject, "exp": expire, "type": "refresh", "ver": token_version},
             settings.JWT_SECRET_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
