@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_admin
+from app.core.config import settings
 from app.models.anomaly import AnomalyPolygon
 from app.models.user import User
 from app.schemas.satellite import AnomalyPolygonRead, SatelliteIngestRequest
@@ -42,6 +44,48 @@ def _to_read(a: AnomalyPolygon) -> AnomalyPolygonRead:
         scene_date=a.scene_date,
         geojson=geojson,
     )
+
+
+@router.post("/token")
+async def get_sh_token():
+    """Proxy to Sentinel Hub Identity API."""
+    if not settings.SENTINEL_HUB_CLIENT_ID or not settings.SENTINEL_HUB_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Sentinel Hub credentials not configured")
+    
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            settings.SENTINEL_HUB_TOKEN_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": settings.SENTINEL_HUB_CLIENT_ID,
+                "client_secret": settings.SENTINEL_HUB_CLIENT_SECRET,
+            }
+        )
+        if not resp.is_success:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@router.post("/process")
+async def proxy_sh_process(payload: dict, response: Response):
+    """Proxy to Sentinel Hub Processing API."""
+    # We need a token first (internally)
+    token_resp = await get_sh_token()
+    token = token_resp["access_token"]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            settings.SENTINEL_HUB_PROCESS_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "image/png"
+            }
+        )
+        if not resp.is_success:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        
+        return Response(content=resp.content, media_type="image/png")
 
 
 @router.post("/ingest", status_code=202)

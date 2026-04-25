@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { getApiUrl } from '../apiConfig';
 
 // ── UWQV Evalscript (Water Quality Viewer) ──────────────────────────────────
 // Returns colored PNG: blue=clean water, green=algae, grey=land/cloud
@@ -64,37 +65,24 @@ let tokenExpiry = 0;
 async function getAccessToken(): Promise<string> {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
-    const clientId = (import.meta as any).env.VITE_SH_CLIENT_ID;
-    const clientSecret = (import.meta as any).env.VITE_SH_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-        throw new Error('Missing VITE_SH_CLIENT_ID / VITE_SH_CLIENT_SECRET in .env');
-    }
-
-    const resp = await fetch(
-        '/sh-token',
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                grant_type: 'client_credentials',
-                client_id: clientId,
-                client_secret: clientSecret,
-            }),
-        }
-    ).catch(err => {
-        console.error('Fetch /sh-token failed:', err);
+    // We no longer need client ID/secret on frontend! 
+    // The backend /satellite/token endpoint handles it securely.
+    const resp = await fetch(getApiUrl('/api/v1/satellite/token'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    }).catch(err => {
+        console.error('Fetch /satellite/token failed:', err);
         throw err;
     });
 
     if (!resp.ok) {
         const text = await resp.text();
-        console.error('SH Token Error:', resp.status, text);
+        console.error('SH Token Proxy Error:', resp.status, text);
         throw new Error(`Token error: ${resp.status}`);
     }
     const data = await resp.json();
     cachedToken = data.access_token;
-    tokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // refresh 60s early
+    tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
     return cachedToken!;
 }
 
@@ -107,7 +95,9 @@ async function fetchWaterQualityImage(
     dateTo: string,
     signal?: AbortSignal
 ): Promise<string> {
-    const token = await getAccessToken();
+    // Note: Our new backend /satellite/process endpoint also takes the payload
+    // and handles the token internally if we want, but here we keep the structure
+    // of passing the payload.
 
     const body = {
         input: {
@@ -134,24 +124,23 @@ async function fetchWaterQualityImage(
         evalscript: UWQV_EVALSCRIPT,
     };
 
-    const resp = await fetch('/sh-process', {
+    const resp = await fetch(getApiUrl('/api/v1/satellite/process'), {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
             Accept: 'image/png',
         },
         body: JSON.stringify(body),
         signal,
     }).catch(err => {
-        if (err.name !== 'AbortError') console.error('Fetch /sh-process failed:', err);
+        if (err.name !== 'AbortError') console.error('Fetch /satellite/process failed:', err);
         throw err;
     });
 
     if (!resp.ok) {
         const text = await resp.text();
-        console.error('SH Process Error:', resp.status, text);
-        throw new Error(`SH API ${resp.status}: ${text.slice(0, 200)}`);
+        console.error('SH Proxy Process Error:', resp.status, text);
+        throw new Error(`SH API Proxy ${resp.status}: ${text.slice(0, 200)}`);
     }
 
     const blob = await resp.blob();
@@ -175,13 +164,15 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
     const prevBlobUrl = useRef<string | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Log when dateFrom/dateTo props change
-    useEffect(() => {
-        console.log('SentinelWaterLayer props updated:', { dateFrom, dateTo, enabled });
-    }, [dateFrom, dateTo, enabled]);
-
+    // Re-fetch whenever loadOverlay identity changes (which encodes all deps)
     const loadOverlay = useCallback(async () => {
-        if (!enabled) return;
+        if (!enabled) {
+            if (overlayRef.current) {
+                map.removeLayer(overlayRef.current);
+                overlayRef.current = null;
+            }
+            return;
+        }
 
         // Cancel previous request
         if (abortRef.current) abortRef.current.abort();
@@ -199,7 +190,6 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
         // Don't fetch if zoomed out too far (below zoom 9 = too large area)
         const zoom = map.getZoom();
         if (zoom < 9) {
-            // Remove overlay if exists
             if (overlayRef.current) {
                 map.removeLayer(overlayRef.current);
                 overlayRef.current = null;
@@ -219,16 +209,14 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
         try {
             // Default to last 60 days if not specified
             const to = dateTo || new Date().toISOString();
-            const fromDate = dateFrom || (() => { const d = new Date(); d.setDate(d.getDate() - 60); return d.toISOString(); })();
+            const fromDate = dateFrom || (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString(); })();
 
-            console.log('🛰️ SentinelWaterLayer fetching:', {
+            console.log('🛰️ SentinelWaterLayer fetching via Proxy:', {
                 from: new Date(fromDate).toLocaleDateString(),
                 to: new Date(to).toLocaleDateString(),
                 zoom,
-                bbox
             });
             const blobUrl = await fetchWaterQualityImage(bbox, width, height, fromDate, to, controller.signal);
-            console.log('✅ Satellite data loaded successfully');
 
             if (controller.signal.aborted) {
                 URL.revokeObjectURL(blobUrl);
@@ -254,36 +242,32 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
         } catch (err: any) {
             if (err.name !== 'AbortError') {
                 console.error('SentinelWaterLayer error:', err);
-                // Give a more descriptive error if it's a TypeError (usually NetworkError)
                 const msg = err instanceof TypeError ? 'Network/Proxy Error' : (err.message || 'Unknown error');
                 setError(msg.slice(0, 80));
             }
         } finally {
-            // Only set loading to false if this is still the most recent request
             if (controller === abortRef.current) {
                 setLoading(false);
             }
         }
     }, [map, enabled, opacity, dateFrom, dateTo]);
 
-    // Debounced map move handler
+    // Map move/zoom handlers
     useMapEvents({
         moveend: () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(loadOverlay, 600);
+            debounceRef.current = setTimeout(loadOverlay, 800);
         },
         zoomend: () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(loadOverlay, 600);
+            debounceRef.current = setTimeout(loadOverlay, 800);
         },
     });
 
-    // Re-fetch whenever loadOverlay identity changes (which encodes all deps: map, enabled, opacity, dateFrom, dateTo)
     useEffect(() => {
         loadOverlay();
     }, [loadOverlay]);
 
-    // Cleanup on unmount only
     useEffect(() => {
         return () => {
             if (abortRef.current) abortRef.current.abort();
@@ -291,26 +275,23 @@ export default function SentinelWaterLayer({ enabled = true, opacity = 0.7, date
             if (overlayRef.current) map.removeLayer(overlayRef.current);
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, []);
+    }, [map]);
 
-    // Update opacity without re-fetching
     useEffect(() => {
         if (overlayRef.current) overlayRef.current.setOpacity(opacity);
     }, [opacity]);
 
     return (
         <>
-            {/* Loading indicator */}
             {loading && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-gradient-to-r from-indigo-600 to-violet-600 text-white backdrop-blur shadow-2xl rounded-2xl px-6 py-3 flex items-center gap-3 border border-white/20 animate-pulse">
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-gradient-to-r from-teal-600 to-blue-600 text-white backdrop-blur shadow-2xl rounded-2xl px-6 py-3 flex items-center gap-3 border border-white/20">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-bold tracking-wide">LOADING SENTINEL-2 DATA…</span>
+                    <span className="text-[10px] font-bold tracking-widest uppercase font-mono">Satellite Scan in Progress...</span>
                 </div>
             )}
-            {/* Error / zoom hint */}
             {!loading && error && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-6 py-3 border border-signal-coral/30">
-                    <span className="text-xs font-mono text-signal-coral">{error}</span>
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-xl rounded-xl px-6 py-3 border border-red-200">
+                    <span className="text-[10px] font-mono text-red-500 font-bold uppercase">{error}</span>
                 </div>
             )}
         </>

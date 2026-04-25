@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, CheckCircle2, Clock, Info, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-
-const API_BASE = 'http://localhost:8000/api/v1';
+import { getApiUrl } from '../apiConfig';
 
 interface BackendReport {
   id: number;
@@ -32,13 +31,13 @@ export default function DetailView() {
 
   const fetchReport = async () => {
     try {
-      const res = await fetch(`${API_BASE}/reports/${id}`);
+      const res = await fetch(getApiUrl(`/api/v1/reports/${id}`));
       if (!res.ok) throw new Error('Report not found');
       const data = await res.json();
       setReport(data);
 
       if (data.photo_url) {
-        const urlRes = await fetch(`${API_BASE}/storage/photo-url?key=${encodeURIComponent(data.photo_url)}`);
+        const urlRes = await fetch(getApiUrl(`/api/v1/storage/photo-url?key=${encodeURIComponent(data.photo_url)}`));
         if (urlRes.ok) {
           const { url } = await urlRes.json();
           setPhotoUrl(url);
@@ -67,7 +66,7 @@ export default function DetailView() {
     <div className="h-full bg-data-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white p-6 pt-12 flex items-center justify-between border-b border-satellite-blue/5">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="w-10 h-10 rounded-xl bg-data-white flex items-center justify-center text-satellite-blue active:scale-90 transition-transform"
         >
@@ -85,10 +84,10 @@ export default function DetailView() {
             <Marker position={[report.latitude, report.longitude]} />
           </MapContainer>
           <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-satellite-blue/10 shadow-lg flex items-center gap-2">
-             <MapPin className="w-3.5 h-3.5 text-galileo-teal" />
-             <span className="text-[10px] font-mono font-bold text-satellite-blue">
-                {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
-             </span>
+            <MapPin className="w-3.5 h-3.5 text-galileo-teal" />
+            <span className="text-[10px] font-mono font-bold text-satellite-blue">
+              {report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}
+            </span>
           </div>
         </div>
 
@@ -106,15 +105,15 @@ export default function DetailView() {
             </div>
 
             <div className="aspect-video rounded-[2rem] overflow-hidden border border-satellite-blue/5 shadow-inner bg-data-white">
-               {photoUrl ? (
-                 <img src={photoUrl} className="w-full h-full object-cover" alt="" />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center">
-                    <Info className="w-8 h-8 text-satellite-blue/5" />
-                 </div>
-               )}
+              {photoUrl ? (
+                <img src={photoUrl} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Info className="w-8 h-8 text-satellite-blue/5" />
+                </div>
+              )}
             </div>
-            
+
             <div className="p-6 rounded-[2rem] bg-white border border-satellite-blue/5 space-y-4">
               <h4 className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-satellite-blue/30">
                 <Info className="w-3 h-3" />
@@ -125,8 +124,8 @@ export default function DetailView() {
               </p>
               {report.ai_verdict && (
                 <div className="mt-4 p-4 rounded-xl bg-galileo-teal/5 border border-galileo-teal/10">
-                   <p className="text-[10px] font-mono text-galileo-teal/60 uppercase font-bold mb-1">AI Verdict</p>
-                   <p className="text-[11px] text-galileo-teal leading-tight">{report.ai_verdict}</p>
+                  <p className="text-[10px] font-mono text-galileo-teal/60 uppercase font-bold mb-1">AI Verdict</p>
+                  <p className="text-[11px] text-galileo-teal leading-tight">{report.ai_verdict}</p>
                 </div>
               )}
             </div>
@@ -156,7 +155,7 @@ export default function DetailView() {
                   <p className="text-[10px] text-satellite-blue/40">Manual review by command specialists.</p>
                 </div>
                 <div className={`text-[10px] font-mono font-bold uppercase ${isVerified ? 'text-green-500' : 'text-amber-500'}`}>
-                   {isVerified ? 'Approved' : 'Queued'}
+                  {isVerified ? 'Approved' : 'Queued'}
                 </div>
               </div>
             </div>

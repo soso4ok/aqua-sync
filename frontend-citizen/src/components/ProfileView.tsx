@@ -30,15 +30,15 @@ export default function ProfileView() {
   const fetchReports = async () => {
     try {
       const myReportIds = JSON.parse(localStorage.getItem('my_reports') || '[]');
-      
+
       const res = await fetch(`${API_BASE}/reports/`);
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data: BackendReport[] = await res.json();
-      
+
       // Filter only reports belonging to this device
       const myData = data.filter(r => myReportIds.includes(r.id));
       setReports(myData);
-      
+
       // Fetch signed URLs for photos
       myData.forEach(async (report: BackendReport) => {
         if (report.photo_url && !photoUrls[report.photo_url]) {
@@ -113,11 +113,11 @@ export default function ProfileView() {
                   <div className="absolute top-3 right-3">
                     {report.trust_level !== 'evidence_void' ? (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/10 font-chakra text-[8px] font-bold tracking-wider uppercase">
-                         Verified
+                        Verified
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] border border-[#F57F17]/10 font-chakra text-[8px] font-bold tracking-wider uppercase">
-                         Pending
+                        Pending
                       </div>
                     )}
                   </div>
@@ -131,7 +131,7 @@ export default function ProfileView() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0 pr-8">
                     <h5 className="font-bold text-sm text-satellite-blue truncate capitalize">
                       {report.pollution_type.replace('_', ' ').toLowerCase()}

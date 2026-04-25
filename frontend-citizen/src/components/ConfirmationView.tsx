@@ -2,18 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Clock, Tag, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-
-const API_BASE = 'http://localhost:8000/api/v1';
+import { getApiUrl } from '../apiConfig';
 
 export default function ConfirmationView() {
   const navigate = useNavigate();
   const location = useLocation();
   const { imgSrc } = location.state || {};
-  
-  const [description, setDescription] = useState(''); 
+
+  const [description, setDescription] = useState('');
   const [currentTime, setCurrentTime] = useState('');
   const [address, setAddress] = useState('Fetching location...');
-  const [coords, setCoords] = useState<{lat: number, lng: number, accuracy: number} | null>(null);
+  const [coords, setCoords] = useState<{ lat: number, lng: number, accuracy: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,7 +56,7 @@ export default function ConfirmationView() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const toggleTag = (id: string) => {
-    setSelectedTags(prev => 
+    setSelectedTags(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     );
   };
@@ -68,7 +67,7 @@ export default function ConfirmationView() {
 
     try {
       // 1. Get Presigned URL
-      const storageRes = await fetch(`${API_BASE}/storage/presigned-upload?content_type=image/jpeg`);
+      const storageRes = await fetch(getApiUrl('/api/v1/storage/presigned-upload?content_type=image/jpeg'));
       if (!storageRes.ok) throw new Error('Failed to get upload URL');
       const { upload_url, key } = await storageRes.json();
 
@@ -91,15 +90,15 @@ export default function ConfirmationView() {
       formData.append('captured_at', currentTime);
       formData.append('photo_key', key);
 
-      const reportRes = await fetch(`${API_BASE}/reports/`, {
+      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
         method: 'POST',
         body: formData,
       });
 
       if (!reportRes.ok) throw new Error('Failed to create report');
-      
+
       const newReport = await reportRes.json();
-      
+
       // Save ID to local storage for "My History" tracking without auth
       const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
       myReports.push(newReport.id);
@@ -122,7 +121,7 @@ export default function ConfirmationView() {
       {/* Image Header */}
       <div className="relative h-2/5 min-h-[300px] w-full bg-black shrink-0">
         <img src={imgSrc} alt="captured" className="h-full w-full object-cover" />
-        <button 
+        <button
           onClick={() => navigate(-1)}
           disabled={isSubmitting}
           className="absolute top-6 left-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 active:scale-90 transition-transform disabled:opacity-50"
@@ -144,7 +143,7 @@ export default function ConfirmationView() {
               <p className="font-semibold">{address}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 text-satellite-blue">
             <div className="w-8 h-8 rounded-full bg-galileo-teal/10 flex items-center justify-center text-galileo-teal">
               <Clock className="w-4 h-4" />
@@ -184,11 +183,10 @@ export default function ConfirmationView() {
                 key={tag.id}
                 onClick={() => toggleTag(tag.id)}
                 disabled={isSubmitting}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedTags.includes(tag.id)
-                    ? 'bg-galileo-teal text-white shadow-md shadow-galileo-teal/20'
-                    : 'bg-white border border-satellite-blue/10 text-satellite-blue/60'
-                } disabled:opacity-50`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedTags.includes(tag.id)
+                  ? 'bg-galileo-teal text-white shadow-md shadow-galileo-teal/20'
+                  : 'bg-white border border-satellite-blue/10 text-satellite-blue/60'
+                  } disabled:opacity-50`}
               >
                 {tag.label}
               </button>
