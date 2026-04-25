@@ -1,0 +1,6 @@
+{
+  "name": "AquaSync",
+  "description": "A PWA bridge between citizens and satellite data for real-time water monitoring. Connects local observers with space intelligence to protect our water resources.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["PWA", "Real-time Monitoring", "Satellite Integration"]
+}
