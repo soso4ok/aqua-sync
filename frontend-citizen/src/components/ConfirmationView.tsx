@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Clock, Tag, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getApiUrl } from '../apiConfig';
+import { apiClient } from '../apiClient';
 import NotificationPopup from './NotificationPopup';
 
 export default function ConfirmationView() {
@@ -76,7 +76,9 @@ export default function ConfirmationView() {
     setIsSubmitting(true);
 
     try {
+
       const blob = await (await fetch(imgSrc)).blob();
+
 
       const formData = new FormData();
       formData.append('latitude', coords.lat.toString());
@@ -87,7 +89,7 @@ export default function ConfirmationView() {
       formData.append('captured_at', currentTime);
       formData.append('photo', blob, 'photo.jpg');
 
-      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
+      const reportRes = await apiClient('/reports/', {
         method: 'POST',
         body: formData,
       });
@@ -95,10 +97,10 @@ export default function ConfirmationView() {
       const data = await reportRes.json();
 
       if (!reportRes.ok) {
-        alert(data.detail || 'Failed to submit report.');
-        return;
+        throw new Error(data.detail || 'Failed to submit report.');
       }
 
+      // Save ID to local storage for "My History" tracking
       const myReports = JSON.parse(localStorage.getItem('my_reports') || '[]');
       myReports.push(data.id);
       localStorage.setItem('my_reports', JSON.stringify(myReports));

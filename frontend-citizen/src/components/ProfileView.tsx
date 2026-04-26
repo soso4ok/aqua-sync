@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { User, ChevronRight, Loader2 } from 'lucide-react';
+import { User, ChevronRight, Loader2, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { getApiUrl } from '../apiConfig';
+import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../apiClient';
 
 interface BackendReport {
   id: number;
@@ -18,6 +19,7 @@ interface BackendReport {
 
 export default function ProfileView() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [reports, setReports] = useState<BackendReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
@@ -29,8 +31,7 @@ export default function ProfileView() {
   const fetchReports = async () => {
     try {
       const myReportIds = JSON.parse(localStorage.getItem('my_reports') || '[]');
-
-      const res = await fetch(getApiUrl('/api/v1/reports/'));
+      const res = await apiClient('/reports/');
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data: BackendReport[] = await res.json();
 
@@ -42,7 +43,7 @@ export default function ProfileView() {
       myData.forEach(async (report: BackendReport) => {
         if (report.photo_url && !photoUrls[report.photo_url]) {
           try {
-            const urlRes = await fetch(getApiUrl(`/api/v1/storage/photo-url?key=${encodeURIComponent(report.photo_url)}`));
+            const urlRes = await apiClient(`/storage/photo-url?key=${encodeURIComponent(report.photo_url)}`);
             if (urlRes.ok) {
               const { url } = await urlRes.json();
               setPhotoUrls(prev => ({ ...prev, [report.photo_url!]: url }));
@@ -59,7 +60,12 @@ export default function ProfileView() {
     }
   };
 
-  const totalPoints = reports.reduce((acc, r) => acc + (r.points_awarded || 0), 0);
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const totalPoints = user?.points ?? reports.reduce((acc, r) => acc + (r.points_awarded || 0), 0);
 
   return (
     <div className="h-full bg-data-white overflow-y-auto pb-24">
@@ -69,9 +75,20 @@ export default function ProfileView() {
           <div className="w-16 h-16 rounded-3xl bg-white border-2 border-satellite-blue/5 flex items-center justify-center shadow-sm">
             <User className="w-8 h-8 text-satellite-blue" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-satellite-blue">Citizen #4092</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold tracking-tight text-satellite-blue truncate">
+              {user?.email ?? 'Citizen'}
+            </h2>
+            <p className="text-xs font-mono text-satellite-blue/40 mt-0.5">
+              ID #{user?.id ?? '—'}
+            </p>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-10 h-10 rounded-2xl bg-white border border-satellite-blue/10 flex items-center justify-center text-satellite-blue/40 hover:text-signal-coral hover:border-signal-coral/20 transition-colors active:scale-95"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Points Display */}
