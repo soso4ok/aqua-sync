@@ -3,21 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, CheckCircle2, Clock, Info, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { getApiUrl } from '../apiConfig';
-
-interface BackendReport {
-  id: number;
-  latitude: number;
-  longitude: number;
-  description: string;
-  photo_url: string | null;
-  pollution_type: string;
-  trust_level: string;
-  ai_verdict: string | null;
-  submitted_at: string;
-  points_awarded: number;
-}
-
+import { BackendReport, MOCK_REPORTS } from '../mockData';
 export default function DetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,20 +17,14 @@ export default function DetailView() {
 
   const fetchReport = async () => {
     try {
-      const res = await fetch(getApiUrl(`/api/v1/reports/${id}`));
-      if (!res.ok) throw new Error('Report not found');
-      const data = await res.json();
-      setReport(data);
-
-      if (data.photo_url) {
-        const urlRes = await fetch(getApiUrl(`/api/v1/storage/photo-url?key=${encodeURIComponent(data.photo_url)}`));
-        if (urlRes.ok) {
-          const { url } = await urlRes.json();
-          setPhotoUrl(url);
-        }
+      const parsedId = parseInt(id || '', 10);
+      const found = MOCK_REPORTS.find(r => r.id === parsedId);
+      
+      if (found) {
+        setReport(found);
+      } else {
+        setReport(null);
       }
-    } catch (e) {
-      console.error(e);
     } finally {
       setIsLoading(false);
     }
