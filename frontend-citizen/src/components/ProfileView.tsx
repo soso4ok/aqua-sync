@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { User, ChevronRight, Loader2, LogOut } from 'lucide-react';
+import { User, ChevronRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../apiClient';
 
 interface BackendReport {
   id: number;
@@ -17,55 +15,93 @@ interface BackendReport {
   points_awarded: number;
 }
 
+const MOCK_REPORTS: BackendReport[] = [
+    {
+        "id": 96,
+        "latitude": 35.8399,
+        "longitude": -3.7276999999999996,
+        "description": "Small patches of white foam near reeds. Could be natural or detergent runoff.",
+        "photo_url": null,
+        "pollution_type": "FOAM",
+        "trust_level": "LOW",
+        "submitted_at": "2026-03-27T06:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 97,
+        "latitude": 35.842999999999996,
+        "longitude": -3.7249999999999996,
+        "description": "Seasonal algae bloom started on the southern end. Green discolouration visible.",
+        "photo_url": null,
+        "pollution_type": "ALGAL_BLOOM",
+        "trust_level": "HIGH",
+        "submitted_at": "2026-03-22T03:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 98,
+        "latitude": 35.8461,
+        "longitude": -3.7222999999999997,
+        "description": "Possible oil near fishing dock, hard to confirm due to low accuracy GPS.",
+        "photo_url": null,
+        "pollution_type": "OIL_SLICK",
+        "trust_level": "LOW",
+        "submitted_at": "2026-03-17T00:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 99,
+        "latitude": 35.849199999999996,
+        "longitude": -3.7196,
+        "description": "Red-brown water near irrigation outlet. Suspected iron/chemical runoff.",
+        "photo_url": null,
+        "pollution_type": "DISCOLORATION",
+        "trust_level": "HIGH",
+        "submitted_at": "2026-03-09T21:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 100,
+        "latitude": 35.8523,
+        "longitude": -3.7169,
+        "description": "Post-flood debris field: plastic, wood, bottles along 300m of shoreline.",
+        "photo_url": null,
+        "pollution_type": "DEBRIS",
+        "trust_level": "HIGH",
+        "submitted_at": "2026-03-01T18:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 101,
+        "latitude": 35.855399999999996,
+        "longitude": -3.7142,
+        "description": "Greenish tint on water, photographed from far. Possibly early algae stage.",
+        "photo_url": null,
+        "pollution_type": "ALGAL_BLOOM",
+        "trust_level": "LOW",
+        "submitted_at": "2026-02-22T15:40:54.898900Z",
+        "points_awarded": 0
+    },
+    {
+        "id": 102,
+        "latitude": 35.8585,
+        "longitude": -3.7114999999999996,
+        "description": "Thick white foam in inlet channel, likely from upstream industrial discharge.",
+        "photo_url": null,
+        "pollution_type": "FOAM",
+        "trust_level": "HIGH",
+        "submitted_at": "2026-02-14T12:40:54.898900Z",
+        "points_awarded": 0
+    }
+];
+
 export default function ProfileView() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const [reports, setReports] = useState<BackendReport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [reports, setReports] = useState<BackendReport[]>(MOCK_REPORTS);
+  const [isLoading, setIsLoading] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
-    try {
-      const myReportIds = JSON.parse(localStorage.getItem('my_reports') || '[]');
-      const res = await apiClient('/reports/');
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      const data: BackendReport[] = await res.json();
-
-      // Filter only reports belonging to this device
-      const myData = data.filter(r => myReportIds.includes(r.id));
-      setReports(myData);
-
-      // Fetch signed URLs for photos
-      myData.forEach(async (report: BackendReport) => {
-        if (report.photo_url && !photoUrls[report.photo_url]) {
-          try {
-            const urlRes = await apiClient(`/storage/photo-url?key=${encodeURIComponent(report.photo_url)}`);
-            if (urlRes.ok) {
-              const { url } = await urlRes.json();
-              setPhotoUrls(prev => ({ ...prev, [report.photo_url!]: url }));
-            }
-          } catch (e) {
-            console.error("Error fetching photo URL", e);
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  const totalPoints = user?.points ?? reports.reduce((acc, r) => acc + (r.points_awarded || 0), 0);
+  const totalPoints = reports.reduce((acc, r) => acc + (r.points_awarded || 0), 0);
 
   return (
     <div className="h-full bg-data-white overflow-y-auto pb-24">
@@ -77,18 +113,9 @@ export default function ProfileView() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold tracking-tight text-satellite-blue truncate">
-              {user?.email ?? 'Citizen'}
+              Citizen #4092
             </h2>
-            <p className="text-xs font-mono text-satellite-blue/40 mt-0.5">
-              ID #{user?.id ?? '—'}
-            </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-10 h-10 rounded-2xl bg-white border border-satellite-blue/10 flex items-center justify-center text-satellite-blue/40 hover:text-signal-coral hover:border-signal-coral/20 transition-colors active:scale-95"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Points Display */}
@@ -127,13 +154,13 @@ export default function ProfileView() {
                 >
                   {/* Status Pill (Top Right) */}
                   <div className="absolute top-3 right-3">
-                    {report.trust_level !== 'evidence_void' ? (
+                    {report.trust_level === 'HIGH' || report.trust_level === 'LOW' ? (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/10 font-chakra text-[8px] font-bold tracking-wider uppercase">
-                        Verified
+                         Verified ({report.trust_level})
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] border border-[#F57F17]/10 font-chakra text-[8px] font-bold tracking-wider uppercase">
-                        Pending
+                         Pending
                       </div>
                     )}
                   </div>
@@ -147,7 +174,7 @@ export default function ProfileView() {
                       </div>
                     )}
                   </div>
-
+                  
                   <div className="flex-1 min-w-0 pr-8">
                     <h5 className="font-bold text-sm text-satellite-blue truncate capitalize">
                       {report.pollution_type.replace('_', ' ').toLowerCase()}

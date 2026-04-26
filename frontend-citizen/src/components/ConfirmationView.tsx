@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, MapPin, Clock, Tag, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { apiClient } from '../apiClient';
+import { getApiUrl } from '../apiConfig';
 import NotificationPopup from './NotificationPopup';
 
 export default function ConfirmationView() {
@@ -89,7 +89,7 @@ export default function ConfirmationView() {
       formData.append('captured_at', currentTime);
       formData.append('photo', blob, 'photo.jpg');
 
-      const reportRes = await apiClient('/reports/', {
+      const reportRes = await fetch(getApiUrl('/api/v1/reports/'), {
         method: 'POST',
         body: formData,
       });
